@@ -23,6 +23,33 @@ export const basicInfoSchema = z.object({
 });
 export type BasicInfoInput = z.infer<typeof basicInfoSchema>;
 
+/** Optional ISO date (YYYY-MM-DD). Empty string is treated as no date. */
+const optionalDate = z
+  .string()
+  .trim()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Use format YYYY-MM-DD')
+  .or(z.literal(''))
+  .optional();
+
+export const milestoneSchema = z.object({
+  title: z.string().trim().min(2, 'Title must be at least 2 characters').max(120),
+  description: z.string().max(1000).optional(),
+  dueDate: optionalDate,
+  status: z.enum(['not_started', 'in_progress', 'completed', 'blocked']),
+  completionPercentage: z.number().int().min(0).max(100),
+});
+export type MilestoneFormInput = z.infer<typeof milestoneSchema>;
+
+export const taskSchema = z.object({
+  title: z.string().trim().min(2, 'Title must be at least 2 characters').max(120),
+  description: z.string().max(1000).optional(),
+  dueDate: optionalDate,
+  status: z.enum(['todo', 'in_progress', 'done', 'blocked']),
+  priority: z.enum(['low', 'medium', 'high']),
+  assignedUserId: z.string().nullable().optional(),
+});
+export type TaskFormInput = z.infer<typeof taskSchema>;
+
 export const projectSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters').max(80),
   description: z.string().min(10, 'Add a short description').max(2000),

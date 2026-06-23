@@ -41,7 +41,7 @@ export interface ProjectSkillNeeded {
   requiredLevel: string | null;
 }
 
-export type MilestoneStatus = 'not_started' | 'in_progress' | 'completed';
+export type MilestoneStatus = 'not_started' | 'in_progress' | 'completed' | 'blocked';
 
 export interface Milestone {
   id: string;
@@ -55,7 +55,7 @@ export interface Milestone {
   updatedAt: string;
 }
 
-export type TaskStatus = 'todo' | 'in_progress' | 'done';
+export type TaskStatus = 'todo' | 'in_progress' | 'done' | 'blocked';
 export type TaskPriority = 'low' | 'medium' | 'high';
 
 export interface Task {
@@ -69,6 +69,23 @@ export interface Task {
   dueDate: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface MilestoneInput {
+  title: string;
+  description?: string | null;
+  dueDate?: string | null;
+  status: MilestoneStatus;
+  completionPercentage: number;
+}
+
+export interface TaskInput {
+  title: string;
+  description?: string | null;
+  dueDate?: string | null;
+  status: TaskStatus;
+  priority: TaskPriority;
+  assignedUserId?: string | null;
 }
 
 export interface ProjectActivity {

@@ -153,6 +153,38 @@ export const PARTNER_PREFERENCE_DIMENSIONS = [
 ] as const;
 export type PartnerPreferenceDimension = (typeof PARTNER_PREFERENCE_DIMENSIONS)[number];
 
+export const MILESTONE_STATUSES: {
+  key: 'not_started' | 'in_progress' | 'completed' | 'blocked';
+  label: string;
+  color: string;
+}[] = [
+  { key: 'not_started', label: 'Not started', color: '#94A3B8' },
+  { key: 'in_progress', label: 'In progress', color: '#3B82F6' },
+  { key: 'completed', label: 'Completed', color: '#10B981' },
+  { key: 'blocked', label: 'Blocked', color: '#EF4444' },
+];
+
+export const TASK_STATUSES: {
+  key: 'todo' | 'in_progress' | 'done' | 'blocked';
+  label: string;
+  color: string;
+}[] = [
+  { key: 'todo', label: 'To do', color: '#94A3B8' },
+  { key: 'in_progress', label: 'In progress', color: '#3B82F6' },
+  { key: 'done', label: 'Done', color: '#10B981' },
+  { key: 'blocked', label: 'Blocked', color: '#EF4444' },
+];
+
+export const TASK_PRIORITIES: {
+  key: 'low' | 'medium' | 'high';
+  label: string;
+  color: string;
+}[] = [
+  { key: 'low', label: 'Low', color: '#64748B' },
+  { key: 'medium', label: 'Medium', color: '#F59E0B' },
+  { key: 'high', label: 'High', color: '#EF4444' },
+];
+
 /** Matching engine weights (V1). See docs/04_Matching_Engine.md. */
 export const MATCH_WEIGHTS = {
   stageFit: 0.25,

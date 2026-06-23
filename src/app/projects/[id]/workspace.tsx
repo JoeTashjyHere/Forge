@@ -1,27 +1,119 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { EmptyState } from '@/components/ui/EmptyState';
-import { Card } from '@/components/ui/Card';
-import { Screen } from '@/components/ui/Screen';
+import { MilestoneCard } from '@/components/forge/MilestoneCard';
+import { MilestoneFormSheet } from '@/components/forge/MilestoneFormSheet';
 import { SectionHeader } from '@/components/forge/SectionHeader';
+import { TaskFormSheet, type AssignableMember } from '@/components/forge/TaskFormSheet';
+import { TaskItem } from '@/components/forge/TaskItem';
+import { Card } from '@/components/ui/Card';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { LoadingState } from '@/components/ui/LoadingState';
+import { ProjectHealthBadge } from '@/components/forge/ProjectHealthBadge';
+import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { calculateProjectHealth, milestoneProgress } from '@/lib/health';
+import { fullName } from '@/lib/profile';
+import { useAuthStore } from '@/store/authStore';
 import { useProjectStore } from '@/store/projectStore';
-
-const TOOLS: { icon: keyof typeof Ionicons.glyphMap; label: string; key: string }[] = [
-  { icon: 'flag-outline', label: 'Milestones', key: 'milestones' },
-  { icon: 'checkbox-outline', label: 'Tasks', key: 'tasks' },
-  { icon: 'document-outline', label: 'Files', key: 'files' },
-  { icon: 'chatbubble-outline', label: 'Chat', key: 'chat' },
-];
+import { useWorkspaceStore } from '@/store/workspaceStore';
+import type { Milestone, MilestoneInput, Task, TaskInput } from '@/types/project';
 
 export default function Workspace() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const theme = useTheme();
+  const profile = useAuthStore((s) => s.profile);
+
   const project = useProjectStore((s) => s.projects.find((p) => p.id === id));
+  const loadProjects = useProjectStore((s) => s.load);
+  const projectsLoaded = useProjectStore((s) => s.loaded);
+
+  const loadProject = useWorkspaceStore((s) => s.loadProject);
+  const loaded = useWorkspaceStore((s) => !!s.loadedProjects[id!]);
+  const milestones = useWorkspaceStore((s) => s.milestonesByProject[id!] ?? []);
+  const tasks = useWorkspaceStore((s) => s.tasksByProject[id!] ?? []);
+  const createMilestone = useWorkspaceStore((s) => s.createMilestone);
+  const updateMilestone = useWorkspaceStore((s) => s.updateMilestone);
+  const deleteMilestone = useWorkspaceStore((s) => s.deleteMilestone);
+  const createTask = useWorkspaceStore((s) => s.createTask);
+  const updateTask = useWorkspaceStore((s) => s.updateTask);
+  const deleteTask = useWorkspaceStore((s) => s.deleteTask);
+
+  const [milestoneSheet, setMilestoneSheet] = useState<{ open: boolean; editing: Milestone | null }>({
+    open: false,
+    editing: null,
+  });
+  const [taskSheet, setTaskSheet] = useState<{ open: boolean; editing: Task | null }>({
+    open: false,
+    editing: null,
+  });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (id) void loadProject(id);
+  }, [id, loadProject]);
+
+  useEffect(() => {
+    if (!projectsLoaded && profile?.id) void loadProjects(profile.id);
+  }, [projectsLoaded, profile?.id, loadProjects]);
+
+  const members: AssignableMember[] = useMemo(
+    () => (profile ? [{ id: profile.id, name: fullName(profile) }] : []),
+    [profile],
+  );
+  const memberName = (uid: string | null) =>
+    members.find((m) => m.id === uid)?.name ?? null;
+
+  const health = useMemo(
+    () => calculateProjectHealth({ milestones, tasks, teamSize: 1 }),
+    [milestones, tasks],
+  );
+  const progress = milestoneProgress(milestones);
+
+  // --- handlers ----------------------------------------------------------
+  const submitMilestone = async (input: MilestoneInput) => {
+    setSaving(true);
+    try {
+      if (milestoneSheet.editing) {
+        await updateMilestone(id!, milestoneSheet.editing.id, input);
+      } else {
+        await createMilestone(id!, input);
+      }
+      setMilestoneSheet({ open: false, editing: null });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const submitTask = async (input: TaskInput) => {
+    setSaving(true);
+    try {
+      if (taskSheet.editing) {
+        await updateTask(id!, taskSheet.editing.id, input);
+      } else {
+        await createTask(id!, input);
+      }
+      setTaskSheet({ open: false, editing: null });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleMilestone = (m: Milestone) => {
+    if (m.status === 'completed') {
+      void updateMilestone(id!, m.id, { status: 'in_progress' });
+    } else {
+      void updateMilestone(id!, m.id, { status: 'completed', completionPercentage: 100 });
+    }
+  };
+
+  const toggleTask = (t: Task) => {
+    void updateTask(id!, t.id, { status: t.status === 'done' ? 'todo' : 'done' });
+  };
 
   return (
     <Screen edges={['top']}>
@@ -36,18 +128,33 @@ export default function Workspace() {
 
       <Text variant="h2">Workspace</Text>
 
-      <View style={styles.toolGrid}>
-        {TOOLS.map((t) => (
-          <Card key={t.key} style={styles.tool} padded>
-            <View style={[styles.toolIcon, { backgroundColor: theme.backgroundSelected }]}>
-              <Ionicons name={t.icon} size={20} color={theme.tint} />
-            </View>
-            <Text variant="label" weight="semibold">
-              {t.label}
+      <Card padded style={styles.healthCard}>
+        <View style={styles.healthRow}>
+          <View style={{ gap: 4 }}>
+            <Text variant="label" tone="secondary">
+              Project health
             </Text>
-          </Card>
-        ))}
-      </View>
+            <ProjectHealthBadge status={health.status} />
+          </View>
+          <View style={styles.progressWrap}>
+            <Text variant="h3" tone="tint">
+              {progress}%
+            </Text>
+            <Text variant="small" tone="muted">
+              milestone progress
+            </Text>
+          </View>
+        </View>
+        {health.riskFactors.length ? (
+          <View style={styles.risks}>
+            {health.riskFactors.map((r) => (
+              <Text key={r} variant="small" tone="muted">
+                • {r}
+              </Text>
+            ))}
+          </View>
+        ) : null}
+      </Card>
 
       <Pressable
         onPress={() => router.push(`/ai/coach?projectId=${id}`)}
@@ -65,18 +172,105 @@ export default function Workspace() {
         <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
       </Pressable>
 
+      {/* Milestones */}
       <View style={styles.section}>
-        <SectionHeader title="Milestones" />
-        <Card padded>
-          <EmptyState
-            icon="flag-outline"
-            title="No milestones created"
-            description="Generate an AI roadmap to break this project into milestones."
-            actionLabel="Generate roadmap"
-            onAction={() => router.push(`/ai/coach?projectId=${id}`)}
-          />
-        </Card>
+        <SectionHeader
+          title={`Milestones${milestones.length ? ` (${milestones.length})` : ''}`}
+          actionLabel="Add"
+          onAction={() => setMilestoneSheet({ open: true, editing: null })}
+        />
+        {!loaded ? (
+          <LoadingState />
+        ) : milestones.length === 0 ? (
+          <Card padded>
+            <EmptyState
+              icon="flag-outline"
+              title="No milestones yet"
+              description="Generate a roadmap or create your first milestone."
+              actionLabel="Create milestone"
+              onAction={() => setMilestoneSheet({ open: true, editing: null })}
+            />
+          </Card>
+        ) : (
+          <View style={styles.list}>
+            {milestones.map((m) => (
+              <MilestoneCard
+                key={m.id}
+                milestone={m}
+                onPress={() => setMilestoneSheet({ open: true, editing: m })}
+                onToggleComplete={() => toggleMilestone(m)}
+              />
+            ))}
+          </View>
+        )}
       </View>
+
+      {/* Tasks */}
+      <View style={styles.section}>
+        <SectionHeader
+          title={`Tasks${tasks.length ? ` (${tasks.length})` : ''}`}
+          actionLabel="Add"
+          onAction={() => setTaskSheet({ open: true, editing: null })}
+        />
+        {!loaded ? (
+          <LoadingState />
+        ) : tasks.length === 0 ? (
+          <Card padded>
+            <EmptyState
+              icon="checkbox-outline"
+              title="No tasks yet"
+              description="Break the next milestone into action items."
+              actionLabel="Create task"
+              onAction={() => setTaskSheet({ open: true, editing: null })}
+            />
+          </Card>
+        ) : (
+          <View style={styles.list}>
+            {tasks.map((t) => (
+              <TaskItem
+                key={t.id}
+                task={t}
+                assigneeName={memberName(t.assignedUserId)}
+                onPress={() => setTaskSheet({ open: true, editing: t })}
+                onToggleDone={() => toggleTask(t)}
+              />
+            ))}
+          </View>
+        )}
+      </View>
+
+      <MilestoneFormSheet
+        visible={milestoneSheet.open}
+        initial={milestoneSheet.editing}
+        submitting={saving}
+        onClose={() => setMilestoneSheet({ open: false, editing: null })}
+        onSubmit={submitMilestone}
+        onDelete={
+          milestoneSheet.editing
+            ? () => {
+                void deleteMilestone(id!, milestoneSheet.editing!.id);
+                setMilestoneSheet({ open: false, editing: null });
+              }
+            : undefined
+        }
+      />
+
+      <TaskFormSheet
+        visible={taskSheet.open}
+        initial={taskSheet.editing}
+        members={members}
+        submitting={saving}
+        onClose={() => setTaskSheet({ open: false, editing: null })}
+        onSubmit={submitTask}
+        onDelete={
+          taskSheet.editing
+            ? () => {
+                void deleteTask(id!, taskSheet.editing!.id);
+                setTaskSheet({ open: false, editing: null });
+              }
+            : undefined
+        }
+      />
     </Screen>
   );
 }
@@ -88,27 +282,18 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
     marginBottom: Spacing.four,
   },
-  toolGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.three,
-    marginTop: Spacing.five,
-  },
-  tool: { width: '47%', gap: Spacing.three },
-  toolIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: Radius.medium,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  healthCard: { marginTop: Spacing.four },
+  healthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  progressWrap: { alignItems: 'flex-end' },
+  risks: { marginTop: Spacing.three, gap: 2 },
   coach: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,
     borderRadius: Radius.card,
     padding: Spacing.four,
-    marginTop: Spacing.five,
+    marginTop: Spacing.four,
   },
   section: { marginTop: Spacing.six },
+  list: { gap: Spacing.three },
 });

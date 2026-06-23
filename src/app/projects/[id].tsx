@@ -11,9 +11,11 @@ import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { calculateProjectHealth, milestoneProgress } from '@/lib/health';
 import { SAMPLE_PROJECTS } from '@/lib/sampleData';
 import { useAuthStore } from '@/store/authStore';
 import { useProjectStore } from '@/store/projectStore';
+import { useWorkspaceStore } from '@/store/workspaceStore';
 
 export default function ProjectDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -24,18 +26,33 @@ export default function ProjectDetail() {
   const loaded = useProjectStore((s) => s.loaded);
   const owned = useProjectStore((s) => s.projects.find((p) => p.id === id));
 
+  const loadProject = useWorkspaceStore((s) => s.loadProject);
+  const milestones = useWorkspaceStore((s) => s.milestonesByProject[id!] ?? []);
+  const tasks = useWorkspaceStore((s) => s.tasksByProject[id!] ?? []);
+
   useEffect(() => {
     if (!loaded && profile?.id) void load(profile.id);
   }, [loaded, profile?.id, load]);
 
-  const sample = SAMPLE_PROJECTS.find((p) => p.projectId === id);
   const isOwner = !!owned;
+
+  useEffect(() => {
+    if (isOwner && id) void loadProject(id);
+  }, [isOwner, id, loadProject]);
+
+  const sample = SAMPLE_PROJECTS.find((p) => p.projectId === id);
 
   const title = owned?.title ?? sample?.title ?? 'Project';
   const description = owned?.description ?? sample?.description ?? '';
   const stage = owned?.stage ?? sample?.stage ?? 'Idea';
-  const health = owned?.healthStatus ?? (sample?.healthStatus as any) ?? 'Needs Attention';
+  const liveHealth = isOwner
+    ? calculateProjectHealth({ milestones, tasks, teamSize: 1 }).status
+    : null;
+  const health = liveHealth ?? owned?.healthStatus ?? (sample?.healthStatus as any) ?? 'Needs Attention';
   const skills = sample?.skillsNeeded ?? [];
+  const progress = milestoneProgress(milestones);
+  const completedMilestones = milestones.filter((m) => m.status === 'completed').length;
+  const openTasks = tasks.filter((t) => t.status !== 'done').length;
 
   return (
     <Screen edges={['top']}>
@@ -78,6 +95,37 @@ export default function ProjectDetail() {
         </Card>
       ) : null}
 
+      {isOwner ? (
+        <Pressable
+          onPress={() => router.push(`/projects/${id}/workspace`)}
+          style={styles.block}
+        >
+          <Card padded>
+            <View style={styles.progressHeader}>
+              <Text variant="label" tone="secondary">
+                Progress
+              </Text>
+              <Text variant="label" weight="semibold" tone="tint">
+                {progress}%
+              </Text>
+            </View>
+            <View style={[styles.track, { backgroundColor: theme.backgroundElement }]}>
+              <View
+                style={[styles.fill, { width: `${progress}%`, backgroundColor: theme.tint }]}
+              />
+            </View>
+            <View style={styles.statsRow}>
+              <Text variant="caption" tone="secondary">
+                {completedMilestones}/{milestones.length} milestones
+              </Text>
+              <Text variant="caption" tone="secondary">
+                {openTasks} open task{openTasks === 1 ? '' : 's'}
+              </Text>
+            </View>
+          </Card>
+        </Pressable>
+      ) : null}
+
       <View style={styles.actions}>
         {isOwner ? (
           <>
@@ -111,4 +159,17 @@ const styles = StyleSheet.create({
   block: { marginTop: Spacing.five },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   actions: { marginTop: Spacing.six, gap: Spacing.three },
+  progressHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: Spacing.two,
+  },
+  track: { height: 8, borderRadius: 999, overflow: 'hidden' },
+  fill: { height: 8, borderRadius: 999 },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: Spacing.three,
+  },
 });
