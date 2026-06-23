@@ -1,4 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BuildStageBadge } from '@/components/forge/BuildStageBadge';
@@ -11,12 +12,32 @@ import { Text } from '@/components/ui/Text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { SAMPLE_BUILDERS } from '@/lib/sampleData';
+import { useAuthStore } from '@/store/authStore';
+import { useMessagingStore } from '@/store/messagingStore';
 
 export default function BuilderDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const theme = useTheme();
+  const profile = useAuthStore((s) => s.profile);
+  const startConversation = useMessagingStore((s) => s.startConversation);
+  const [starting, setStarting] = useState(false);
   const builder = SAMPLE_BUILDERS.find((b) => b.userId === id);
+
+  const message = async () => {
+    if (!builder || !profile?.id || starting) return;
+    setStarting(true);
+    try {
+      const convId = await startConversation(profile.id, {
+        id: builder.userId,
+        name: builder.displayName,
+        photoUrl: builder.profilePhotoUrl,
+      });
+      router.push(`/messages/${convId}?name=${encodeURIComponent(builder.displayName)}`);
+    } finally {
+      setStarting(false);
+    }
+  };
 
   if (!builder) {
     return (
@@ -78,11 +99,10 @@ export default function BuilderDetail() {
       </Card>
 
       <View style={styles.actions}>
-        <Button title="Connect" onPress={() => router.push('/(tabs)/messages')} />
         <Button
-          title="Message"
-          variant="secondary"
-          onPress={() => router.push('/(tabs)/messages')}
+          title={`Message ${builder.displayName.split(' ')[0]}`}
+          loading={starting}
+          onPress={message}
         />
       </View>
     </Screen>

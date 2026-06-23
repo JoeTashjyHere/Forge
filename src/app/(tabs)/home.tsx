@@ -1,24 +1,30 @@
-import { useRouter } from 'expo-router';
-import { useEffect, useMemo } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { AIRecommendationCard } from '@/components/forge/AIRecommendationCard';
 import { BuilderCard } from '@/components/forge/BuilderCard';
 import { ProjectCard } from '@/components/forge/ProjectCard';
 import { SectionHeader } from '@/components/forge/SectionHeader';
+import { Avatar } from '@/components/ui/Avatar';
 import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
 import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { calculateProjectHealth } from '@/lib/health';
+import { formatRelativeTime } from '@/lib/dates';
 import { fullName } from '@/lib/profile';
 import { SAMPLE_BUILDERS, SAMPLE_PROJECTS } from '@/lib/sampleData';
 import { useAuthStore } from '@/store/authStore';
+import { useMessagingStore } from '@/store/messagingStore';
 import { useProjectStore } from '@/store/projectStore';
 import { useWorkspaceStore } from '@/store/workspaceStore';
 
 export default function Home() {
   const router = useRouter();
+  const theme = useTheme();
   const profile = useAuthStore((s) => s.profile);
   const name = profile ? fullName(profile).split(' ')[0] : 'Builder';
 
@@ -29,12 +35,23 @@ export default function Home() {
   const milestonesByProject = useWorkspaceStore((s) => s.milestonesByProject);
   const tasksByProject = useWorkspaceStore((s) => s.tasksByProject);
 
+  const conversations = useMessagingStore((s) => s.conversations);
+  const loadConversations = useMessagingStore((s) => s.loadConversations);
+  const unreadConversations = conversations.filter((c) => c.unreadCount > 0).slice(0, 3);
+  const profileId = profile?.id;
+
   const builders = SAMPLE_BUILDERS.slice(0, 2);
   const recommended = SAMPLE_PROJECTS.slice(0, 2);
 
   useEffect(() => {
-    if (!projectsLoaded && profile?.id) void loadProjects(profile.id);
-  }, [projectsLoaded, profile?.id, loadProjects]);
+    if (!projectsLoaded && profileId) void loadProjects(profileId);
+  }, [projectsLoaded, profileId, loadProjects]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (profileId) void loadConversations(profileId);
+    }, [profileId, loadConversations]),
+  );
 
   const projectIds = projects.map((p) => p.id).join(',');
   useEffect(() => {
@@ -74,6 +91,39 @@ export default function Home() {
         actionLabel="Create a project"
         onAction={() => router.push('/projects/create')}
       />
+
+      {unreadConversations.length ? (
+        <View style={styles.section}>
+          <SectionHeader
+            title="Unread messages"
+            actionLabel="All"
+            onAction={() => router.push('/(tabs)/messages')}
+          />
+          <View style={styles.list}>
+            {unreadConversations.map((c) => (
+              <Card key={c.id} onPress={() => router.push(`/messages/${c.id}`)} padded={false}>
+                <View style={styles.convRow}>
+                  <Avatar name={c.otherName} uri={c.otherPhotoUrl} size={40} />
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <View style={styles.convTop}>
+                      <Text variant="label" weight="semibold" numberOfLines={1} style={{ flex: 1 }}>
+                        {c.otherName}
+                      </Text>
+                      <Text variant="small" tone="muted">
+                        {formatRelativeTime(c.lastMessageAt)}
+                      </Text>
+                    </View>
+                    <Text variant="caption" tone="default" weight="semibold" numberOfLines={1}>
+                      {c.lastMessage ?? 'New message'}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
+                </View>
+              </Card>
+            ))}
+          </View>
+        </View>
+      ) : null}
 
       <View style={styles.section}>
         <SectionHeader
@@ -186,4 +236,11 @@ const styles = StyleSheet.create({
   section: { marginTop: Spacing.six },
   list: { gap: Spacing.three },
   statsRow: { flexDirection: 'row', gap: Spacing.three },
+  convRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    padding: Spacing.four,
+  },
+  convTop: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
 });

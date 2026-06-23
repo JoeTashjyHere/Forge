@@ -50,6 +50,16 @@ export const taskSchema = z.object({
 });
 export type TaskFormInput = z.infer<typeof taskSchema>;
 
+export const messageSchema = z.object({
+  body: z.string().trim().min(1, 'Message cannot be empty').max(4000, 'Message is too long'),
+});
+export type MessageInput = z.infer<typeof messageSchema>;
+
+/** Lightweight guard used by chat inputs before sending. */
+export function isValidMessageBody(body: string): boolean {
+  return messageSchema.safeParse({ body }).success;
+}
+
 export const roadmapSchema = z.object({
   summary: z.string().min(1),
   stage: z.string().default(''),

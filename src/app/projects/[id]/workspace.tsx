@@ -16,10 +16,12 @@ import { Text } from '@/components/ui/Text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { Button } from '@/components/ui/Button';
+import { formatRelativeTime } from '@/lib/dates';
 import { calculateProjectHealth, milestoneProgress } from '@/lib/health';
 import { fullName } from '@/lib/profile';
 import { importRoadmapToWorkspace } from '@/lib/roadmap';
 import { useAuthStore } from '@/store/authStore';
+import { useMessagingStore } from '@/store/messagingStore';
 import { useProjectStore } from '@/store/projectStore';
 import { useRoadmapStore } from '@/store/roadmapStore';
 import { useWorkspaceStore } from '@/store/workspaceStore';
@@ -63,12 +65,17 @@ export default function Workspace() {
   const roadmapImported = latestRoadmap ? !!importedIds[latestRoadmap.id] : false;
   const [importingRoadmap, setImportingRoadmap] = useState(false);
 
+  const loadWorkspaceMessages = useMessagingStore((s) => s.loadWorkspaceMessages);
+  const workspaceMessages = useMessagingStore((s) => s.workspaceByProject[id!] ?? []);
+  const lastMessage = workspaceMessages[workspaceMessages.length - 1];
+
   useEffect(() => {
     if (id) {
       void loadProject(id);
       void loadRoadmaps(id);
+      void loadWorkspaceMessages(id);
     }
-  }, [id, loadProject, loadRoadmaps]);
+  }, [id, loadProject, loadRoadmaps, loadWorkspaceMessages]);
 
   useEffect(() => {
     if (!projectsLoaded && profile?.id) void loadProjects(profile.id);
@@ -240,6 +247,40 @@ export default function Workspace() {
         </Card>
       </View>
 
+      {/* Team chat */}
+      <View style={styles.section}>
+        <SectionHeader
+          title="Team chat"
+          actionLabel="Open"
+          onAction={() => router.push(`/projects/${id}/chat`)}
+        />
+        <Card padded onPress={() => router.push(`/projects/${id}/chat`)}>
+          {lastMessage ? (
+            <View style={{ gap: 4 }}>
+              <View style={styles.chatPreviewTop}>
+                <Text variant="caption" weight="semibold">
+                  {lastMessage.senderId === profile?.id ? 'You' : lastMessage.senderName}
+                </Text>
+                <Text variant="small" tone="muted">
+                  {formatRelativeTime(lastMessage.createdAt)}
+                </Text>
+              </View>
+              <Text variant="caption" tone="secondary" numberOfLines={2}>
+                {lastMessage.body}
+              </Text>
+            </View>
+          ) : (
+            <EmptyState
+              icon="chatbubbles-outline"
+              title="No messages yet"
+              description="No messages yet — start the conversation and get the team moving."
+              actionLabel="Open team chat"
+              onAction={() => router.push(`/projects/${id}/chat`)}
+            />
+          )}
+        </Card>
+      </View>
+
       {/* Milestones */}
       <View style={styles.section}>
         <SectionHeader
@@ -370,4 +411,5 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
     marginTop: Spacing.three,
   },
+  chatPreviewTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
 });
