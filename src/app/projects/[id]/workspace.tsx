@@ -15,10 +15,13 @@ import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { Button } from '@/components/ui/Button';
 import { calculateProjectHealth, milestoneProgress } from '@/lib/health';
 import { fullName } from '@/lib/profile';
+import { importRoadmapToWorkspace } from '@/lib/roadmap';
 import { useAuthStore } from '@/store/authStore';
 import { useProjectStore } from '@/store/projectStore';
+import { useRoadmapStore } from '@/store/roadmapStore';
 import { useWorkspaceStore } from '@/store/workspaceStore';
 import type { Milestone, MilestoneInput, Task, TaskInput } from '@/types/project';
 
@@ -53,9 +56,19 @@ export default function Workspace() {
   });
   const [saving, setSaving] = useState(false);
 
+  const loadRoadmaps = useRoadmapStore((s) => s.loadProject);
+  const markImported = useRoadmapStore((s) => s.markImported);
+  const latestRoadmap = useRoadmapStore((s) => s.roadmapsByProject[id!]?.[0]);
+  const importedIds = useRoadmapStore((s) => s.importedIds);
+  const roadmapImported = latestRoadmap ? !!importedIds[latestRoadmap.id] : false;
+  const [importingRoadmap, setImportingRoadmap] = useState(false);
+
   useEffect(() => {
-    if (id) void loadProject(id);
-  }, [id, loadProject]);
+    if (id) {
+      void loadProject(id);
+      void loadRoadmaps(id);
+    }
+  }, [id, loadProject, loadRoadmaps]);
 
   useEffect(() => {
     if (!projectsLoaded && profile?.id) void loadProjects(profile.id);
@@ -115,6 +128,17 @@ export default function Workspace() {
     void updateTask(id!, t.id, { status: t.status === 'done' ? 'todo' : 'done' });
   };
 
+  const addRoadmapToWorkspace = async () => {
+    if (!latestRoadmap || importingRoadmap) return;
+    setImportingRoadmap(true);
+    try {
+      await importRoadmapToWorkspace(id!, latestRoadmap.roadmap);
+      await markImported(latestRoadmap.id);
+    } finally {
+      setImportingRoadmap(false);
+    }
+  };
+
   return (
     <Screen edges={['top']}>
       <View style={styles.headerBar}>
@@ -171,6 +195,50 @@ export default function Workspace() {
         </View>
         <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
       </Pressable>
+
+      {/* Roadmap */}
+      <View style={styles.section}>
+        <SectionHeader
+          title="AI Roadmap"
+          actionLabel={latestRoadmap ? 'View' : undefined}
+          onAction={
+            latestRoadmap ? () => router.push(`/projects/${id}/roadmap`) : undefined
+          }
+        />
+        <Card padded>
+          {latestRoadmap ? (
+            <>
+              <Text variant="caption" tone="secondary" numberOfLines={3}>
+                {latestRoadmap.roadmap.summary}
+              </Text>
+              {roadmapImported ? (
+                <View style={styles.roadmapImported}>
+                  <Ionicons name="checkmark-circle" size={16} color={theme.success} />
+                  <Text variant="small" tone="secondary">
+                    Added to workspace
+                  </Text>
+                </View>
+              ) : (
+                <Button
+                  title="Add milestones & tasks to workspace"
+                  size="sm"
+                  loading={importingRoadmap}
+                  style={{ marginTop: Spacing.three }}
+                  onPress={addRoadmapToWorkspace}
+                />
+              )}
+            </>
+          ) : (
+            <EmptyState
+              icon="map-outline"
+              title="No roadmap yet"
+              description="No roadmap yet — generate a 30-day plan and turn it into milestones and tasks."
+              actionLabel="Generate roadmap"
+              onAction={() => router.push(`/projects/${id}/roadmap`)}
+            />
+          )}
+        </Card>
+      </View>
 
       {/* Milestones */}
       <View style={styles.section}>
@@ -296,4 +364,10 @@ const styles = StyleSheet.create({
   },
   section: { marginTop: Spacing.six },
   list: { gap: Spacing.three },
+  roadmapImported: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+    marginTop: Spacing.three,
+  },
 });

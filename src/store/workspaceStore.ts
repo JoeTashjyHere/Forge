@@ -13,6 +13,11 @@ const TASKS_KEY = 'forge.tasks';
 
 type ByProject<T> = Record<string, T[]>;
 
+// Monotonic counter so bulk inserts (e.g. importing a roadmap) never collide
+// on Date.now() within the same millisecond.
+let localSeq = 0;
+const localId = (prefix: string) => `${prefix}-${Date.now()}-${(localSeq += 1)}`;
+
 interface WorkspaceState {
   milestonesByProject: ByProject<Milestone>;
   tasksByProject: ByProject<Task>;
@@ -122,7 +127,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   createMilestone: async (projectId, input) => {
     const now = new Date().toISOString();
     const optimistic: Milestone = {
-      id: `local-m-${Date.now()}`,
+      id: localId('local-m'),
       projectId,
       title: input.title,
       description: input.description ?? null,
@@ -205,7 +210,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   createTask: async (projectId, input) => {
     const now = new Date().toISOString();
     const optimistic: Task = {
-      id: `local-t-${Date.now()}`,
+      id: localId('local-t'),
       projectId,
       assignedUserId: input.assignedUserId ?? null,
       title: input.title,

@@ -134,8 +134,13 @@ export default function ProjectDetail() {
               onPress={() => router.push(`/projects/${id}/workspace`)}
             />
             <Button
-              title="Ask the AI coach"
+              title="Create AI Roadmap"
               variant="secondary"
+              onPress={() => router.push(`/projects/${id}/roadmap`)}
+            />
+            <Button
+              title="Ask the AI coach"
+              variant="ghost"
               onPress={() => router.push(`/ai/coach?projectId=${id}`)}
             />
           </>

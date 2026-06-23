@@ -50,6 +50,34 @@ export const taskSchema = z.object({
 });
 export type TaskFormInput = z.infer<typeof taskSchema>;
 
+export const roadmapSchema = z.object({
+  summary: z.string().min(1),
+  stage: z.string().default(''),
+  recommended_team: z
+    .array(z.object({ role: z.string().min(1), reason: z.string().default('') }))
+    .default([]),
+  risks: z
+    .array(
+      z.object({
+        risk: z.string().min(1),
+        severity: z.enum(['low', 'medium', 'high']).catch('medium'),
+        mitigation: z.string().default(''),
+      }),
+    )
+    .default([]),
+  weeks: z
+    .array(
+      z.object({
+        week: z.number().int(),
+        goal: z.string().default(''),
+        milestones: z.array(z.string()).default([]),
+        tasks: z.array(z.string()).default([]),
+      }),
+    )
+    .default([]),
+  next_action: z.string().default(''),
+});
+
 export const projectSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters').max(80),
   description: z.string().min(10, 'Add a short description').max(2000),

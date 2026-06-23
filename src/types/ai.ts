@@ -25,18 +25,18 @@ export interface AICoachResponse {
   roadmapItems?: string[];
 }
 
-export interface RoadmapTeamRole {
+export interface AIRoadmapRecommendedTeamMember {
   role: string;
   reason: string;
 }
 
-export interface RoadmapRisk {
+export interface AIRoadmapRisk {
   risk: string;
   severity: 'low' | 'medium' | 'high';
   mitigation: string;
 }
 
-export interface RoadmapWeek {
+export interface AIRoadmapWeek {
   week: number;
   goal: string;
   milestones: string[];
@@ -46,8 +46,26 @@ export interface RoadmapWeek {
 export interface AIRoadmap {
   summary: string;
   stage: string;
-  recommended_team: RoadmapTeamRole[];
-  risks: RoadmapRisk[];
-  weeks: RoadmapWeek[];
+  recommended_team: AIRoadmapRecommendedTeamMember[];
+  risks: AIRoadmapRisk[];
+  weeks: AIRoadmapWeek[];
   next_action: string;
 }
+
+/** A roadmap as persisted (in ai_roadmaps or on-device in demo mode). */
+export interface StoredRoadmap {
+  id: string;
+  projectId: string;
+  roadmap: AIRoadmap;
+  createdAt: string;
+}
+
+export interface RoadmapImportResult {
+  milestonesAdded: number;
+  tasksAdded: number;
+}
+
+// Backwards-compatible aliases.
+export type RoadmapTeamRole = AIRoadmapRecommendedTeamMember;
+export type RoadmapRisk = AIRoadmapRisk;
+export type RoadmapWeek = AIRoadmapWeek;
