@@ -16,7 +16,6 @@ import type { BuilderArchetype } from '@/lib/constants';
 import { useTheme } from '@/hooks/use-theme';
 import { canManageMembers } from '@/lib/permissions';
 import { fullName } from '@/lib/profile';
-import { SAMPLE_BUILDERS } from '@/lib/sampleData';
 import { analyzeTeam, fetchCandidateBuilders } from '@/lib/teamBuilder';
 import { useAuthStore } from '@/store/authStore';
 import { useMembershipStore } from '@/store/membershipStore';
@@ -87,7 +86,7 @@ export default function TeamBuilderScreen() {
         members: activeMembers,
         ownerId: project?.ownerId ?? profile?.id,
         ownerArchetype: (profile?.builderArchetype as BuilderArchetype | null) ?? null,
-        candidates: candidates ?? SAMPLE_BUILDERS,
+        candidates: candidates ?? [],
         excludeUserIds: members.map((m) => m.userId),
       }),
     [project, activeMembers, members, candidates, profile],

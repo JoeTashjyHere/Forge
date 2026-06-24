@@ -277,7 +277,10 @@ export async function fetchCandidateBuilders(): Promise<BuilderMatch[]> {
       .eq('profile_visibility', 'public')
       .limit(50);
     const rows = (users ?? []) as any[];
-    if (!rows.length) return SAMPLE_BUILDERS;
+    // Live mode must only ever surface real builders. When there aren't enough
+    // public profiles yet, return an empty pool (the UI shows an empty state)
+    // rather than leaking sample/demo builders as if they were real users.
+    if (!rows.length) return [];
 
     const ids = rows.map((r) => r.id);
     const skillsByUser = new Map<string, string[]>();
@@ -304,6 +307,7 @@ export async function fetchCandidateBuilders(): Promise<BuilderMatch[]> {
       reasons: [],
     }));
   } catch {
-    return SAMPLE_BUILDERS;
+    // Never fall back to sample builders in live mode.
+    return [];
   }
 }

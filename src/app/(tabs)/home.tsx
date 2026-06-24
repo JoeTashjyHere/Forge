@@ -19,6 +19,7 @@ import { calculateProjectHealth } from '@/lib/health';
 import { formatRelativeTime } from '@/lib/dates';
 import { fullName } from '@/lib/profile';
 import { SAMPLE_BUILDERS, SAMPLE_PROJECTS } from '@/lib/sampleData';
+import { isSupabaseConfigured } from '@/lib/supabase';
 import { analyzeTeam } from '@/lib/teamBuilder';
 import { useAuthStore } from '@/store/authStore';
 import { useLaunchStore } from '@/store/launchStore';
@@ -50,6 +51,9 @@ export default function Home() {
   const launchFollowerCount = useLaunchStore((s) => s.followerCount);
   const recentLaunches = launchFeed.slice(0, 3);
 
+  // Sample builders/projects are a demo-only showcase. In live mode we never
+  // render them as if they were real recommendations.
+  const showSamples = !isSupabaseConfigured;
   const builders = SAMPLE_BUILDERS.slice(0, 2);
   const recommended = SAMPLE_PROJECTS.slice(0, 2);
 
@@ -174,48 +178,52 @@ export default function Home() {
         </View>
       ) : null}
 
-      <View style={styles.section}>
-        <SectionHeader
-          title="Recommended builders"
-          actionLabel="See all"
-          onAction={() => router.push('/(tabs)/matches')}
-        />
-        <View style={styles.list}>
-          {builders.map((b) => (
-            <BuilderCard
-              key={b.userId}
-              builder={b}
-              onPress={() => router.push(`/matches/${b.userId}`)}
-            />
-          ))}
+      {showSamples ? (
+        <View style={styles.section}>
+          <SectionHeader
+            title="Recommended builders"
+            actionLabel="See all"
+            onAction={() => router.push('/(tabs)/matches')}
+          />
+          <View style={styles.list}>
+            {builders.map((b) => (
+              <BuilderCard
+                key={b.userId}
+                builder={b}
+                onPress={() => router.push(`/matches/${b.userId}`)}
+              />
+            ))}
+          </View>
         </View>
-      </View>
+      ) : null}
 
-      <View style={styles.section}>
-        <SectionHeader
-          title="Recommended projects"
-          actionLabel="Explore"
-          onAction={() => router.push('/(tabs)/projects')}
-        />
-        <View style={styles.list}>
-          {recommended.map((p) => (
-            <ProjectCard
-              key={p.projectId}
-              project={{
-                id: p.projectId,
-                title: p.title,
-                description: p.description,
-                stage: p.stage,
-                healthStatus: p.healthStatus as any,
-                skillsNeeded: p.skillsNeeded,
-                teamCount: p.teamCount,
-                matchScore: p.matchScore,
-              }}
-              onPress={() => router.push(`/projects/${p.projectId}`)}
-            />
-          ))}
+      {showSamples ? (
+        <View style={styles.section}>
+          <SectionHeader
+            title="Recommended projects"
+            actionLabel="Explore"
+            onAction={() => router.push('/(tabs)/projects')}
+          />
+          <View style={styles.list}>
+            {recommended.map((p) => (
+              <ProjectCard
+                key={p.projectId}
+                project={{
+                  id: p.projectId,
+                  title: p.title,
+                  description: p.description,
+                  stage: p.stage,
+                  healthStatus: p.healthStatus as any,
+                  skillsNeeded: p.skillsNeeded,
+                  teamCount: p.teamCount,
+                  matchScore: p.matchScore,
+                }}
+                onPress={() => router.push(`/projects/${p.projectId}`)}
+              />
+            ))}
+          </View>
         </View>
-      </View>
+      ) : null}
 
       {teamGaps.length ? (
         <View style={styles.section}>

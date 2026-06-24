@@ -12,6 +12,7 @@ import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { fullName } from '@/lib/profile';
 import { SAMPLE_PROJECTS } from '@/lib/sampleData';
+import { isSupabaseConfigured } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { useMembershipStore } from '@/store/membershipStore';
 import { useProjectStore } from '@/store/projectStore';
@@ -89,27 +90,30 @@ export default function ProjectsTab() {
         )}
       </View>
 
-      <View style={styles.section}>
-        <SectionHeader title="Recommended for you" />
-        <View style={styles.list}>
-          {SAMPLE_PROJECTS.map((p) => (
-            <ProjectCard
-              key={p.projectId}
-              project={{
-                id: p.projectId,
-                title: p.title,
-                description: p.description,
-                stage: p.stage,
-                healthStatus: p.healthStatus as any,
-                skillsNeeded: p.skillsNeeded,
-                teamCount: p.teamCount,
-                matchScore: p.matchScore,
-              }}
-              onPress={() => router.push(`/projects/${p.projectId}`)}
-            />
-          ))}
+      {/* Curated sample projects are a demo-only showcase, never shown in live mode. */}
+      {!isSupabaseConfigured ? (
+        <View style={styles.section}>
+          <SectionHeader title="Recommended for you" />
+          <View style={styles.list}>
+            {SAMPLE_PROJECTS.map((p) => (
+              <ProjectCard
+                key={p.projectId}
+                project={{
+                  id: p.projectId,
+                  title: p.title,
+                  description: p.description,
+                  stage: p.stage,
+                  healthStatus: p.healthStatus as any,
+                  skillsNeeded: p.skillsNeeded,
+                  teamCount: p.teamCount,
+                  matchScore: p.matchScore,
+                }}
+                onPress={() => router.push(`/projects/${p.projectId}`)}
+              />
+            ))}
+          </View>
         </View>
-      </View>
+      ) : null}
     </Screen>
   );
 }

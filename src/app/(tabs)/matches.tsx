@@ -3,13 +3,42 @@ import { StyleSheet, View } from 'react-native';
 import { BuilderCard } from '@/components/forge/BuilderCard';
 import { ProjectCard } from '@/components/forge/ProjectCard';
 import { SectionHeader } from '@/components/forge/SectionHeader';
+import { Card } from '@/components/ui/Card';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
 import { Spacing } from '@/constants/theme';
+import { isSupabaseConfigured } from '@/lib/supabase';
 import { SAMPLE_BUILDERS, SAMPLE_PROJECTS } from '@/lib/sampleData';
 
 export default function MatchesTab() {
   const router = useRouter();
+
+  // The V1 matching showcase is curated sample data. In live (Supabase) mode we
+  // never present sample people/projects as if they were real Forge users — smart
+  // matching is rolling out, so we point builders to the actions that work today.
+  if (isSupabaseConfigured) {
+    return (
+      <Screen>
+        <Text variant="h2" style={{ marginBottom: Spacing.two }}>
+          Matches
+        </Text>
+        <Text tone="secondary" style={{ marginBottom: Spacing.five }}>
+          People and projects most likely to help you build.
+        </Text>
+        <Card padded>
+          <EmptyState
+            icon="sparkles-outline"
+            title="Smart matching is coming soon"
+            description="We're rolling out recommendations as the Forge community grows. For now, use Team Builder on a project to see exactly which roles you're missing, and invite teammates directly."
+            actionLabel="Go to your projects"
+            onAction={() => router.push('/(tabs)/projects')}
+          />
+        </Card>
+      </Screen>
+    );
+  }
+
   const recommendedBuilders = SAMPLE_BUILDERS.filter((b) => !b.isUnexpected);
   const unexpected = SAMPLE_BUILDERS.filter((b) => b.isUnexpected);
   const recommendedProjects = SAMPLE_PROJECTS.filter((p) => !p.isUnexpected);

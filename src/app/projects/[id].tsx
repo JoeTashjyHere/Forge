@@ -21,6 +21,7 @@ import { canManageMembers } from '@/lib/permissions';
 import { fullName } from '@/lib/profile';
 import { recommendTeammates } from '@/lib/recommend';
 import { SAMPLE_PROJECTS } from '@/lib/sampleData';
+import { isSupabaseConfigured } from '@/lib/supabase';
 import { analyzeTeam } from '@/lib/teamBuilder';
 import { useAuthStore } from '@/store/authStore';
 import { useLaunchStore } from '@/store/launchStore';
@@ -299,8 +300,9 @@ export default function ProjectDetail() {
         </View>
       ) : null}
 
-      {/* Recommended teammates (owner) */}
-      {isOwner && recommendations.length ? (
+      {/* Recommended teammates (owner). Sample-backed quick list — demo only.
+          In live mode the "AI Team Builder" screen below uses real builders. */}
+      {isOwner && !isSupabaseConfigured && recommendations.length ? (
         <View style={styles.block}>
           <SectionHeader title="Recommended teammates" />
           {missingSkills.length ? (
