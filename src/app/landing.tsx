@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { ModeBanner } from '@/components/forge/ModeBanner';
 import { Button } from '@/components/ui/Button';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
@@ -64,6 +65,9 @@ export default function Landing() {
           Forge helps ambitious people turn ideas into real projects — with an AI coach, the right
           teammates, and a clear path from first step to launch.
         </Text>
+        <View style={styles.modeRow}>
+          <ModeBanner demoOnly />
+        </View>
       </View>
 
       <View style={styles.valueProps}>
@@ -130,6 +134,7 @@ const styles = StyleSheet.create({
   },
   tagline: { marginTop: Spacing.four },
   pitch: { marginTop: Spacing.one },
+  modeRow: { flexDirection: 'row', marginTop: Spacing.two },
   valueProps: { gap: Spacing.three },
   valueRow: {
     flexDirection: 'row',

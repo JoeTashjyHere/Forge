@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BuildStageBadge } from '@/components/forge/BuildStageBadge';
+import { ModeBanner } from '@/components/forge/ModeBanner';
 import { SectionHeader } from '@/components/forge/SectionHeader';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
@@ -131,6 +132,9 @@ export default function ProfileTab() {
 
       <View style={styles.section}>
         <SectionHeader title="About" />
+        <View style={styles.modeRow}>
+          <ModeBanner />
+        </View>
         <Card padded>
           <LinkRow label="Privacy Policy" onPress={() => router.push('/legal/privacy')} />
           <LinkRow label="Terms of Service" onPress={() => router.push('/legal/terms')} />
@@ -215,4 +219,5 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
     paddingVertical: Spacing.three,
   },
+  modeRow: { flexDirection: 'row', marginBottom: Spacing.three },
 });

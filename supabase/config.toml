@@ -1,0 +1,53 @@
+# Supabase CLI configuration for Forge.
+# `supabase link --project-ref <ref>` updates project_id to your real project.
+# Local-only settings here; production values live in the Supabase dashboard.
+
+project_id = "forge"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+# Set to your deployed web URL in production (used for email links / redirects).
+site_url = "http://localhost:8081"
+additional_redirect_urls = ["http://localhost:8081"]
+jwt_expiry = 3600
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+# For fast beta onboarding you may disable email confirmations in the dashboard.
+enable_confirmations = false
+
+# --- Edge Functions ---------------------------------------------------------
+# All Forge functions require an authenticated caller; the OpenAI key is read
+# from Edge Function secrets server-side and never reaches the client.
+
+[functions.ai-coach]
+enabled = true
+verify_jwt = true
+
+[functions.create-roadmap]
+enabled = true
+verify_jwt = true
+
+[functions.project-health]
+enabled = true
+verify_jwt = true
+
+[functions.generate-matches]
+enabled = true
+verify_jwt = true
