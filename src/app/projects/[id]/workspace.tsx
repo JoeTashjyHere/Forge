@@ -287,6 +287,14 @@ export default function Workspace() {
             />
           )}
         </Card>
+        {isOwner ? (
+          <Button
+            title="AI Team Builder"
+            variant="secondary"
+            onPress={() => router.push(`/projects/${id}/team-builder`)}
+            style={{ marginTop: Spacing.three }}
+          />
+        ) : null}
       </View>
 
       {/* Team chat */}

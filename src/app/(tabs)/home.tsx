@@ -13,10 +13,12 @@ import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import type { BuilderArchetype } from '@/lib/constants';
 import { calculateProjectHealth } from '@/lib/health';
 import { formatRelativeTime } from '@/lib/dates';
 import { fullName } from '@/lib/profile';
 import { SAMPLE_BUILDERS, SAMPLE_PROJECTS } from '@/lib/sampleData';
+import { analyzeTeam } from '@/lib/teamBuilder';
 import { useAuthStore } from '@/store/authStore';
 import { useMembershipStore } from '@/store/membershipStore';
 import { useMessagingStore } from '@/store/messagingStore';
@@ -74,6 +76,26 @@ export default function Home() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectIds, loadProject, loadMembers]);
+
+  const ownerArchetype = (profile?.builderArchetype as BuilderArchetype | null) ?? null;
+  const teamGaps = useMemo(
+    () =>
+      projects
+        .map((p) => {
+          const active = (membersByProject[p.id] ?? []).filter(
+            (m) => m.membershipStatus === 'active',
+          );
+          const analysis = analyzeTeam({
+            project: { stage: p.stage, skillsNeeded: p.skillsNeeded },
+            members: active,
+            ownerId: profile?.id,
+            ownerArchetype,
+          });
+          return { project: p, count: analysis.criticalRoleCount };
+        })
+        .filter((g) => g.count > 0),
+    [projects, membersByProject, profile?.id, ownerArchetype],
+  );
 
   const stats = useMemo(() => {
     let completedMilestones = 0;
@@ -184,6 +206,32 @@ export default function Home() {
         </View>
       </View>
 
+      {teamGaps.length ? (
+        <View style={styles.section}>
+          <SectionHeader title="Team gaps" />
+          <View style={styles.list}>
+            {teamGaps.map((g) => (
+              <Card key={g.project.id} onPress={() => router.push(`/projects/${g.project.id}/team-builder`)}>
+                <View style={styles.gapRow}>
+                  <View style={[styles.gapIcon, { backgroundColor: theme.backgroundElement }]}>
+                    <Ionicons name="people" size={18} color={theme.tint} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text variant="label" weight="semibold" numberOfLines={1}>
+                      {g.project.title}
+                    </Text>
+                    <Text variant="caption" tone="secondary">
+                      Your project is missing {g.count} critical role{g.count === 1 ? '' : 's'}.
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color={theme.textMuted} />
+                </View>
+              </Card>
+            ))}
+          </View>
+        </View>
+      ) : null}
+
       <View style={styles.section}>
         <SectionHeader title="Active projects" />
         {projects.length === 0 ? (
@@ -251,6 +299,14 @@ const styles = StyleSheet.create({
   greeting: { marginBottom: Spacing.five, gap: 2 },
   section: { marginTop: Spacing.six },
   list: { gap: Spacing.three },
+  gapRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
+  gapIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   statsRow: { flexDirection: 'row', gap: Spacing.three },
   convRow: {
     flexDirection: 'row',

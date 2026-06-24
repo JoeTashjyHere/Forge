@@ -229,6 +229,11 @@ export default function ProjectDetail() {
           <>
             <Button title="Open workspace" onPress={() => router.push(`/projects/${id}/workspace`)} />
             <Button
+              title="AI Team Builder"
+              variant="secondary"
+              onPress={() => router.push(`/projects/${id}/team-builder`)}
+            />
+            <Button
               title="Create AI Roadmap"
               variant="secondary"
               onPress={() => router.push(`/projects/${id}/roadmap`)}
