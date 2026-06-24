@@ -288,12 +288,18 @@ export default function Workspace() {
           )}
         </Card>
         {isOwner ? (
-          <Button
-            title="AI Team Builder"
-            variant="secondary"
-            onPress={() => router.push(`/projects/${id}/team-builder`)}
-            style={{ marginTop: Spacing.three }}
-          />
+          <View style={{ gap: Spacing.three, marginTop: Spacing.three }}>
+            <Button
+              title="AI Team Builder"
+              variant="secondary"
+              onPress={() => router.push(`/projects/${id}/team-builder`)}
+            />
+            <Button
+              title="Launch Readiness"
+              variant="secondary"
+              onPress={() => router.push(`/projects/${id}/launch-readiness`)}
+            />
+          </View>
         ) : null}
       </View>
 

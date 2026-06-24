@@ -13,15 +13,19 @@ import { Card } from '@/components/ui/Card';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
 import { Spacing } from '@/constants/theme';
+import type { BuilderArchetype } from '@/lib/constants';
 import { useTheme } from '@/hooks/use-theme';
 import { calculateProjectHealth, milestoneProgress } from '@/lib/health';
+import { analyzeLaunchReadiness } from '@/lib/launchReadiness';
 import { canManageMembers } from '@/lib/permissions';
 import { fullName } from '@/lib/profile';
 import { recommendTeammates } from '@/lib/recommend';
 import { SAMPLE_PROJECTS } from '@/lib/sampleData';
+import { analyzeTeam } from '@/lib/teamBuilder';
 import { useAuthStore } from '@/store/authStore';
 import { useMembershipStore } from '@/store/membershipStore';
 import { useProjectStore } from '@/store/projectStore';
+import { useRoadmapStore } from '@/store/roadmapStore';
 import { useWorkspaceStore } from '@/store/workspaceStore';
 
 export default function ProjectDetail() {
@@ -36,6 +40,9 @@ export default function ProjectDetail() {
   const loadProject = useWorkspaceStore((s) => s.loadProject);
   const milestones = useWorkspaceStore((s) => s.milestonesByProject[id!] ?? []);
   const tasks = useWorkspaceStore((s) => s.tasksByProject[id!] ?? []);
+
+  const loadRoadmaps = useRoadmapStore((s) => s.loadProject);
+  const latestRoadmap = useRoadmapStore((s) => s.roadmapsByProject[id!]?.[0] ?? null);
 
   const members = useMembershipStore((s) => s.membersByProject[id!] ?? []);
   const loadMembers = useMembershipStore((s) => s.loadMembers);
@@ -52,8 +59,11 @@ export default function ProjectDetail() {
   const isOwner = !!owned;
 
   useEffect(() => {
-    if (isOwner && id) void loadProject(id);
-  }, [isOwner, id, loadProject]);
+    if (isOwner && id) {
+      void loadProject(id);
+      void loadRoadmaps(id);
+    }
+  }, [isOwner, id, loadProject, loadRoadmaps]);
 
   useEffect(() => {
     if (!id) return;
@@ -92,6 +102,17 @@ export default function ProjectDetail() {
     () => recommendTeammates({ stage, skillsNeeded: skills }, activeMembers),
     [stage, skills, activeMembers],
   );
+
+  const readiness = useMemo(() => {
+    if (!isOwner || !owned) return null;
+    const teamAnalysis = analyzeTeam({
+      project: { stage: owned.stage, skillsNeeded: owned.skillsNeeded },
+      members: activeMembers,
+      ownerId: owned.ownerId,
+      ownerArchetype: (profile?.builderArchetype as BuilderArchetype | null) ?? null,
+    });
+    return analyzeLaunchReadiness(owned, milestones, tasks, teamAnalysis, latestRoadmap);
+  }, [isOwner, owned, activeMembers, milestones, tasks, latestRoadmap, profile]);
 
   const request = async () => {
     if (!id || !profile || working) return;
@@ -185,6 +206,37 @@ export default function ProjectDetail() {
         </Pressable>
       ) : null}
 
+      {/* Launch readiness banner */}
+      {isOwner && readiness ? (
+        <Pressable
+          onPress={() => router.push(`/projects/${id}/launch-readiness`)}
+          style={styles.block}
+        >
+          <Card padded>
+            <View style={styles.readinessRow}>
+              <Ionicons
+                name="rocket-outline"
+                size={20}
+                color={readiness.readinessStatus === 'ready' ? theme.success : theme.tint}
+              />
+              <View style={{ flex: 1 }}>
+                <Text variant="label" weight="semibold">
+                  Launch readiness · {readiness.readinessScore}/100
+                </Text>
+                <Text variant="caption" tone="secondary">
+                  {readiness.readinessStatus === 'ready'
+                    ? 'This project may be ready for launch.'
+                    : readiness.readinessStatus === 'not_ready'
+                      ? 'Launch readiness is low — review what is missing before publishing.'
+                      : 'Getting close — keep closing the remaining gaps.'}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={theme.textMuted} />
+            </View>
+          </Card>
+        </Pressable>
+      ) : null}
+
       {/* Team */}
       {activeMembers.length ? (
         <View style={styles.block}>
@@ -234,6 +286,11 @@ export default function ProjectDetail() {
               onPress={() => router.push(`/projects/${id}/team-builder`)}
             />
             <Button
+              title="Launch Readiness"
+              variant="secondary"
+              onPress={() => router.push(`/projects/${id}/launch-readiness`)}
+            />
+            <Button
               title="Create AI Roadmap"
               variant="secondary"
               onPress={() => router.push(`/projects/${id}/roadmap`)}
@@ -278,6 +335,7 @@ const styles = StyleSheet.create({
   desc: { marginTop: Spacing.four },
   block: { marginTop: Spacing.five },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  readinessRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   actions: { marginTop: Spacing.six, gap: Spacing.three },
   progressHeader: {
     flexDirection: 'row',
