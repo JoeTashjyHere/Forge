@@ -76,6 +76,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       timeCommitment: input.timeCommitment ?? null,
       lookingForMembers: input.lookingForMembers,
       launchStatus: 'draft',
+      skillsNeeded,
       createdAt: now,
       updatedAt: now,
     };

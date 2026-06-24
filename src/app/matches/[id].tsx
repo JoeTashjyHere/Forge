@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BuildStageBadge } from '@/components/forge/BuildStageBadge';
@@ -8,12 +8,16 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Screen } from '@/components/ui/Screen';
+import { Sheet } from '@/components/ui/Sheet';
 import { Text } from '@/components/ui/Text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { fullName } from '@/lib/profile';
 import { SAMPLE_BUILDERS } from '@/lib/sampleData';
 import { useAuthStore } from '@/store/authStore';
+import { useMembershipStore } from '@/store/membershipStore';
 import { useMessagingStore } from '@/store/messagingStore';
+import { useProjectStore } from '@/store/projectStore';
 
 export default function BuilderDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -21,8 +25,18 @@ export default function BuilderDetail() {
   const theme = useTheme();
   const profile = useAuthStore((s) => s.profile);
   const startConversation = useMessagingStore((s) => s.startConversation);
+  const myProjects = useProjectStore((s) => s.projects);
+  const loadProjects = useProjectStore((s) => s.load);
+  const loadMembers = useMembershipStore((s) => s.loadMembers);
+  const inviteBuilder = useMembershipStore((s) => s.inviteBuilder);
   const [starting, setStarting] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [invitedTo, setInvitedTo] = useState<string | null>(null);
   const builder = SAMPLE_BUILDERS.find((b) => b.userId === id);
+
+  useEffect(() => {
+    if (profile?.id) void loadProjects(profile.id);
+  }, [profile?.id, loadProjects]);
 
   const message = async () => {
     if (!builder || !profile?.id || starting) return;
@@ -37,6 +51,19 @@ export default function BuilderDetail() {
     } finally {
       setStarting(false);
     }
+  };
+
+  const invite = async (projectId: string, projectTitle: string) => {
+    if (!builder || !profile) return;
+    const ownerUser = { id: profile.id, name: fullName(profile), photoUrl: profile.profilePhotoUrl };
+    await loadMembers(projectId, ownerUser);
+    await inviteBuilder(
+      projectId,
+      { id: builder.userId, name: builder.displayName, photoUrl: builder.profilePhotoUrl },
+      'Contributor',
+    );
+    setInviteOpen(false);
+    setInvitedTo(projectTitle);
   };
 
   if (!builder) {
@@ -98,13 +125,49 @@ export default function BuilderDetail() {
         </View>
       </Card>
 
+      {invitedTo ? (
+        <Card padded style={{ ...styles.block, borderColor: theme.success, borderWidth: 1 }}>
+          <Text variant="caption" tone="secondary">
+            Invited {builder.displayName.split(' ')[0]} to {invitedTo}.
+          </Text>
+        </Card>
+      ) : null}
+
       <View style={styles.actions}>
         <Button
           title={`Message ${builder.displayName.split(' ')[0]}`}
           loading={starting}
           onPress={message}
         />
+        {myProjects.length ? (
+          <Button title="Invite to a project" variant="secondary" onPress={() => setInviteOpen(true)} />
+        ) : null}
       </View>
+
+      <Sheet visible={inviteOpen} onClose={() => setInviteOpen(false)} title="Invite to a project">
+        <Text tone="secondary" style={{ marginBottom: Spacing.four }}>
+          Choose a project to invite {builder.displayName.split(' ')[0]} to as a contributor.
+        </Text>
+        <View style={{ gap: Spacing.three }}>
+          {myProjects.map((p) => (
+            <Pressable key={p.id} onPress={() => invite(p.id, p.title)}>
+              <Card padded>
+                <View style={styles.projectRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text variant="label" weight="semibold" numberOfLines={1}>
+                      {p.title}
+                    </Text>
+                    <Text variant="small" tone="muted">
+                      {p.stage}
+                    </Text>
+                  </View>
+                  <Ionicons name="add-circle-outline" size={22} color={theme.tint} />
+                </View>
+              </Card>
+            </Pressable>
+          ))}
+        </View>
+      </Sheet>
     </Screen>
   );
 }
@@ -116,4 +179,5 @@ const styles = StyleSheet.create({
   reasonRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingVertical: 3 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   actions: { marginTop: Spacing.six, gap: Spacing.three },
+  projectRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
 });

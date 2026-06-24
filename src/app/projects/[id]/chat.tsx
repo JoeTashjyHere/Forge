@@ -12,6 +12,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { formatClockTime } from '@/lib/dates';
 import { fullName } from '@/lib/profile';
 import { useAuthStore } from '@/store/authStore';
+import { useMembershipStore } from '@/store/membershipStore';
 import { useMessagingStore } from '@/store/messagingStore';
 import { useProjectStore } from '@/store/projectStore';
 
@@ -28,6 +29,10 @@ export default function WorkspaceChat() {
   const sendWorkspaceMessage = useMessagingStore((s) => s.sendWorkspaceMessage);
   const subscribeWorkspace = useMessagingStore((s) => s.subscribeWorkspace);
 
+  const loadMembers = useMembershipStore((s) => s.loadMembers);
+  const projectMembers = useMembershipStore((s) => s.membersByProject[id!] ?? []);
+  const activeMembers = projectMembers.filter((m) => m.membershipStatus === 'active');
+
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,9 +48,14 @@ export default function WorkspaceChat() {
   useEffect(() => {
     if (!id) return;
     void loadWorkspaceMessages(id);
+    const ownerUser =
+      project?.ownerId === profile?.id && profile
+        ? { id: profile.id, name: fullName(profile), photoUrl: profile.profilePhotoUrl }
+        : undefined;
+    void loadMembers(id, ownerUser);
     const unsub = subscribeWorkspace(id);
     return unsub;
-  }, [id, loadWorkspaceMessages, subscribeWorkspace]);
+  }, [id, loadWorkspaceMessages, subscribeWorkspace, loadMembers, project?.ownerId, profile]);
 
   useEffect(() => {
     const t = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
@@ -79,8 +89,14 @@ export default function WorkspaceChat() {
             Team chat
           </Text>
           <Text variant="small" tone="muted" numberOfLines={1}>
-            {project?.title ?? 'Workspace'}
+            {project?.title ?? 'Workspace'} · {activeMembers.length} member
+            {activeMembers.length === 1 ? '' : 's'}
           </Text>
+        </View>
+        <View style={styles.presence}>
+          {activeMembers.slice(0, 4).map((m) => (
+            <Avatar key={m.id} name={m.displayName ?? 'Builder'} uri={m.profilePhotoUrl} size={28} />
+          ))}
         </View>
       </View>
 
@@ -154,6 +170,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.five,
     paddingVertical: Spacing.three,
   },
+  presence: { flexDirection: 'row', gap: -6 },
   empty: { flex: 1, justifyContent: 'center', paddingHorizontal: Spacing.five },
   messages: {
     padding: Spacing.five,

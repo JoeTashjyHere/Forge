@@ -10,8 +10,10 @@ import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { fullName } from '@/lib/profile';
 import { SAMPLE_PROJECTS } from '@/lib/sampleData';
 import { useAuthStore } from '@/store/authStore';
+import { useMembershipStore } from '@/store/membershipStore';
 import { useProjectStore } from '@/store/projectStore';
 
 export default function ProjectsTab() {
@@ -20,10 +22,26 @@ export default function ProjectsTab() {
   const profile = useAuthStore((s) => s.profile);
   const myProjects = useProjectStore((s) => s.projects);
   const load = useProjectStore((s) => s.load);
+  const membersByProject = useMembershipStore((s) => s.membersByProject);
+  const loadMembers = useMembershipStore((s) => s.loadMembers);
 
   useEffect(() => {
     if (profile?.id) void load(profile.id);
   }, [profile?.id, load]);
+
+  const projectIds = myProjects.map((p) => p.id).join(',');
+  useEffect(() => {
+    if (!profile) return;
+    const ownerUser = { id: profile.id, name: fullName(profile), photoUrl: profile.profilePhotoUrl };
+    myProjects.forEach((p) => void loadMembers(p.id, ownerUser));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectIds, profile, loadMembers]);
+
+  const teamCount = (projectId: string) =>
+    Math.max(
+      (membersByProject[projectId] ?? []).filter((m) => m.membershipStatus === 'active').length,
+      1,
+    );
 
   return (
     <Screen>
@@ -62,7 +80,7 @@ export default function ProjectsTab() {
                   description: p.description,
                   stage: p.stage,
                   healthStatus: p.healthStatus,
-                  teamCount: 1,
+                  teamCount: teamCount(p.id),
                 }}
                 onPress={() => router.push(`/projects/${p.id}`)}
               />

@@ -1,9 +1,12 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BuildStageBadge } from '@/components/forge/BuildStageBadge';
+import { BuilderCard } from '@/components/forge/BuilderCard';
+import { MemberRow } from '@/components/forge/MemberRow';
 import { ProjectHealthBadge } from '@/components/forge/ProjectHealthBadge';
+import { SectionHeader } from '@/components/forge/SectionHeader';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -12,8 +15,12 @@ import { Text } from '@/components/ui/Text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { calculateProjectHealth, milestoneProgress } from '@/lib/health';
+import { canManageMembers } from '@/lib/permissions';
+import { fullName } from '@/lib/profile';
+import { recommendTeammates } from '@/lib/recommend';
 import { SAMPLE_PROJECTS } from '@/lib/sampleData';
 import { useAuthStore } from '@/store/authStore';
+import { useMembershipStore } from '@/store/membershipStore';
 import { useProjectStore } from '@/store/projectStore';
 import { useWorkspaceStore } from '@/store/workspaceStore';
 
@@ -30,6 +37,14 @@ export default function ProjectDetail() {
   const milestones = useWorkspaceStore((s) => s.milestonesByProject[id!] ?? []);
   const tasks = useWorkspaceStore((s) => s.tasksByProject[id!] ?? []);
 
+  const members = useMembershipStore((s) => s.membersByProject[id!] ?? []);
+  const loadMembers = useMembershipStore((s) => s.loadMembers);
+  const requestToJoin = useMembershipStore((s) => s.requestToJoin);
+  const acceptInvite = useMembershipStore((s) => s.acceptInvite);
+  const declineInvite = useMembershipStore((s) => s.declineInvite);
+
+  const [working, setWorking] = useState(false);
+
   useEffect(() => {
     if (!loaded && profile?.id) void load(profile.id);
   }, [loaded, profile?.id, load]);
@@ -40,19 +55,68 @@ export default function ProjectDetail() {
     if (isOwner && id) void loadProject(id);
   }, [isOwner, id, loadProject]);
 
+  useEffect(() => {
+    if (!id) return;
+    const ownerUser =
+      isOwner && profile
+        ? { id: profile.id, name: fullName(profile), photoUrl: profile.profilePhotoUrl }
+        : undefined;
+    void loadMembers(id, ownerUser);
+  }, [id, isOwner, profile, loadMembers]);
+
   const sample = SAMPLE_PROJECTS.find((p) => p.projectId === id);
 
   const title = owned?.title ?? sample?.title ?? 'Project';
   const description = owned?.description ?? sample?.description ?? '';
   const stage = owned?.stage ?? sample?.stage ?? 'Idea';
+  const skills = useMemo(
+    () => owned?.skillsNeeded ?? sample?.skillsNeeded ?? [],
+    [owned?.skillsNeeded, sample?.skillsNeeded],
+  );
+
+  const activeMembers = members.filter((m) => m.membershipStatus === 'active');
+  const teamSize = Math.max(activeMembers.length, 1);
+
   const liveHealth = isOwner
-    ? calculateProjectHealth({ milestones, tasks, teamSize: 1 }).status
+    ? calculateProjectHealth({ milestones, tasks, teamSize }).status
     : null;
   const health = liveHealth ?? owned?.healthStatus ?? (sample?.healthStatus as any) ?? 'Needs Attention';
-  const skills = sample?.skillsNeeded ?? [];
   const progress = milestoneProgress(milestones);
   const completedMilestones = milestones.filter((m) => m.status === 'completed').length;
   const openTasks = tasks.filter((t) => t.status !== 'done').length;
+
+  const myMembership = members.find((m) => m.userId === profile?.id);
+  const canManage = owned && profile ? canManageMembers(owned, profile.id, members) : false;
+
+  const { recommendations, missingSkills } = useMemo(
+    () => recommendTeammates({ stage, skillsNeeded: skills }, activeMembers),
+    [stage, skills, activeMembers],
+  );
+
+  const request = async () => {
+    if (!id || !profile || working) return;
+    setWorking(true);
+    try {
+      await requestToJoin(id, {
+        id: profile.id,
+        name: fullName(profile),
+        photoUrl: profile.profilePhotoUrl,
+      });
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  const respondInvite = async (accept: boolean) => {
+    if (!id || !myMembership || working) return;
+    setWorking(true);
+    try {
+      if (accept) await acceptInvite(id, myMembership.id);
+      else await declineInvite(id, myMembership.id);
+    } finally {
+      setWorking(false);
+    }
+  };
 
   return (
     <Screen edges={['top']}>
@@ -60,7 +124,7 @@ export default function ProjectDetail() {
         <Pressable onPress={() => router.back()} hitSlop={12}>
           <Ionicons name="chevron-back" size={26} color={theme.text} />
         </Pressable>
-        {isOwner ? (
+        {canManage ? (
           <Pressable onPress={() => router.push(`/projects/${id}/settings`)} hitSlop={12}>
             <Ionicons name="settings-outline" size={22} color={theme.text} />
           </Pressable>
@@ -96,10 +160,7 @@ export default function ProjectDetail() {
       ) : null}
 
       {isOwner ? (
-        <Pressable
-          onPress={() => router.push(`/projects/${id}/workspace`)}
-          style={styles.block}
-        >
+        <Pressable onPress={() => router.push(`/projects/${id}/workspace`)} style={styles.block}>
           <Card padded>
             <View style={styles.progressHeader}>
               <Text variant="label" tone="secondary">
@@ -110,9 +171,7 @@ export default function ProjectDetail() {
               </Text>
             </View>
             <View style={[styles.track, { backgroundColor: theme.backgroundElement }]}>
-              <View
-                style={[styles.fill, { width: `${progress}%`, backgroundColor: theme.tint }]}
-              />
+              <View style={[styles.fill, { width: `${progress}%`, backgroundColor: theme.tint }]} />
             </View>
             <View style={styles.statsRow}>
               <Text variant="caption" tone="secondary">
@@ -126,13 +185,49 @@ export default function ProjectDetail() {
         </Pressable>
       ) : null}
 
+      {/* Team */}
+      {activeMembers.length ? (
+        <View style={styles.block}>
+          <SectionHeader
+            title={`Team (${activeMembers.length})`}
+            actionLabel={canManage ? 'Manage' : undefined}
+            onAction={canManage ? () => router.push(`/projects/${id}/settings`) : undefined}
+          />
+          <Card padded>
+            <View style={{ gap: Spacing.three }}>
+              {activeMembers.slice(0, 4).map((m) => (
+                <MemberRow key={m.id} member={m} hideStatus isYou={m.userId === profile?.id} />
+              ))}
+            </View>
+          </Card>
+        </View>
+      ) : null}
+
+      {/* Recommended teammates (owner) */}
+      {isOwner && recommendations.length ? (
+        <View style={styles.block}>
+          <SectionHeader title="Recommended teammates" />
+          {missingSkills.length ? (
+            <Text variant="caption" tone="secondary" style={{ marginBottom: Spacing.three }}>
+              Still needs: {missingSkills.join(', ')}
+            </Text>
+          ) : null}
+          <View style={{ gap: Spacing.three }}>
+            {recommendations.slice(0, 3).map((b) => (
+              <BuilderCard
+                key={b.userId}
+                builder={b}
+                onPress={() => router.push(`/matches/${b.userId}`)}
+              />
+            ))}
+          </View>
+        </View>
+      ) : null}
+
       <View style={styles.actions}>
         {isOwner ? (
           <>
-            <Button
-              title="Open workspace"
-              onPress={() => router.push(`/projects/${id}/workspace`)}
-            />
+            <Button title="Open workspace" onPress={() => router.push(`/projects/${id}/workspace`)} />
             <Button
               title="Create AI Roadmap"
               variant="secondary"
@@ -144,8 +239,23 @@ export default function ProjectDetail() {
               onPress={() => router.push(`/ai/coach?projectId=${id}`)}
             />
           </>
+        ) : myMembership?.membershipStatus === 'active' ? (
+          <Button title="Open workspace" onPress={() => router.push(`/projects/${id}/workspace`)} />
+        ) : myMembership?.membershipStatus === 'invited' ? (
+          <>
+            <Button title="Accept invitation" loading={working} onPress={() => respondInvite(true)} />
+            <Button
+              title="Decline"
+              variant="ghost"
+              onPress={() => respondInvite(false)}
+            />
+          </>
+        ) : myMembership?.membershipStatus === 'pending' ? (
+          <Button title="Request pending" variant="secondary" disabled onPress={() => {}} />
+        ) : myMembership?.membershipStatus === 'declined' ? (
+          <Button title="Request declined" variant="ghost" disabled onPress={() => {}} />
         ) : (
-          <Button title="Request to join" onPress={() => router.push('/(tabs)/matches')} />
+          <Button title="Request to join" loading={working} onPress={request} />
         )}
       </View>
     </Screen>

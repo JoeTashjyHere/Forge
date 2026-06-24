@@ -18,6 +18,7 @@ import { formatRelativeTime } from '@/lib/dates';
 import { fullName } from '@/lib/profile';
 import { SAMPLE_BUILDERS, SAMPLE_PROJECTS } from '@/lib/sampleData';
 import { useAuthStore } from '@/store/authStore';
+import { useMembershipStore } from '@/store/membershipStore';
 import { useMessagingStore } from '@/store/messagingStore';
 import { useProjectStore } from '@/store/projectStore';
 import { useWorkspaceStore } from '@/store/workspaceStore';
@@ -53,11 +54,26 @@ export default function Home() {
     }, [profileId, loadConversations]),
   );
 
+  const membersByProject = useMembershipStore((s) => s.membersByProject);
+  const loadMembers = useMembershipStore((s) => s.loadMembers);
+  const teamCount = (projectId: string) => {
+    const active = (membersByProject[projectId] ?? []).filter(
+      (m) => m.membershipStatus === 'active',
+    ).length;
+    return Math.max(active, 1);
+  };
+
   const projectIds = projects.map((p) => p.id).join(',');
   useEffect(() => {
-    projects.forEach((p) => void loadProject(p.id));
+    projects.forEach((p) => {
+      void loadProject(p.id);
+      const ownerUser = profile
+        ? { id: profile.id, name: fullName(profile), photoUrl: profile.profilePhotoUrl }
+        : undefined;
+      void loadMembers(p.id, ownerUser);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectIds, loadProject]);
+  }, [projectIds, loadProject, loadMembers]);
 
   const stats = useMemo(() => {
     let completedMilestones = 0;
@@ -196,7 +212,7 @@ export default function Home() {
                     teamSize: 1,
                   }).status,
                   skillsNeeded: [],
-                  teamCount: 1,
+                  teamCount: teamCount(p.id),
                 }}
                 onPress={() => router.push(`/projects/${p.id}`)}
               />

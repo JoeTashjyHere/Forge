@@ -139,6 +139,22 @@ export type ProjectVisibility = (typeof PROJECT_VISIBILITY)[number];
 export const PROJECT_ROLES = ['Owner', 'Admin', 'Contributor', 'Viewer'] as const;
 export type ProjectRole = (typeof PROJECT_ROLES)[number];
 
+/** Roles assignable via member management (Owner is implicit / not reassignable here). */
+export const ASSIGNABLE_ROLES = ['Admin', 'Contributor', 'Viewer'] as const;
+
+export const MEMBER_STATUSES: {
+  key: 'active' | 'pending' | 'invited' | 'declined' | 'removed' | 'left';
+  label: string;
+  color: string;
+}[] = [
+  { key: 'active', label: 'Active', color: '#10B981' },
+  { key: 'pending', label: 'Pending', color: '#F59E0B' },
+  { key: 'invited', label: 'Invited', color: '#3B82F6' },
+  { key: 'declined', label: 'Declined', color: '#94A3B8' },
+  { key: 'removed', label: 'Removed', color: '#EF4444' },
+  { key: 'left', label: 'Left', color: '#94A3B8' },
+];
+
 export const HEALTH_STATUSES = ['Healthy', 'Needs Attention', 'At Risk'] as const;
 export type HealthStatus = (typeof HEALTH_STATUSES)[number];
 

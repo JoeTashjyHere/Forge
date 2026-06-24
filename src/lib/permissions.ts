@@ -15,17 +15,28 @@ export function memberRole(
   members: ProjectMember[],
   userId: string,
 ): ProjectRole | null {
-  return members.find((m) => m.userId === userId)?.role ?? null;
+  const active = members.find(
+    (m) => m.userId === userId && m.membershipStatus === 'active',
+  );
+  return active?.role ?? null;
 }
 
 export function canEditProject(project: Project, userId: string, members: ProjectMember[]) {
   if (project.ownerId === userId) return true;
   const role = memberRole(members, userId);
-  return role === 'Admin';
+  return role === 'Owner' || role === 'Admin';
 }
 
 export function canManageMembers(project: Project, userId: string, members: ProjectMember[]) {
   return canEditProject(project, userId, members);
+}
+
+/** True when this member is the only remaining active owner (must not be removed/demoted). */
+export function isLastOwner(members: ProjectMember[], member: ProjectMember): boolean {
+  if (member.role !== 'Owner' || member.membershipStatus !== 'active') return false;
+  return (
+    members.filter((m) => m.role === 'Owner' && m.membershipStatus === 'active').length <= 1
+  );
 }
 
 export function canViewWorkspace(project: Project, userId: string, members: ProjectMember[]) {

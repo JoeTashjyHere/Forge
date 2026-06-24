@@ -20,7 +20,9 @@ import { formatRelativeTime } from '@/lib/dates';
 import { calculateProjectHealth, milestoneProgress } from '@/lib/health';
 import { fullName } from '@/lib/profile';
 import { importRoadmapToWorkspace } from '@/lib/roadmap';
+import { MemberRow } from '@/components/forge/MemberRow';
 import { useAuthStore } from '@/store/authStore';
+import { useMembershipStore } from '@/store/membershipStore';
 import { useMessagingStore } from '@/store/messagingStore';
 import { useProjectStore } from '@/store/projectStore';
 import { useRoadmapStore } from '@/store/roadmapStore';
@@ -69,6 +71,11 @@ export default function Workspace() {
   const workspaceMessages = useMessagingStore((s) => s.workspaceByProject[id!] ?? []);
   const lastMessage = workspaceMessages[workspaceMessages.length - 1];
 
+  const loadMembers = useMembershipStore((s) => s.loadMembers);
+  const projectMembers = useMembershipStore((s) => s.membersByProject[id!] ?? []);
+  const activeMembers = projectMembers.filter((m) => m.membershipStatus === 'active');
+  const isOwner = project?.ownerId === profile?.id;
+
   useEffect(() => {
     if (id) {
       void loadProject(id);
@@ -81,9 +88,18 @@ export default function Workspace() {
     if (!projectsLoaded && profile?.id) void loadProjects(profile.id);
   }, [projectsLoaded, profile?.id, loadProjects]);
 
+  useEffect(() => {
+    if (!id) return;
+    const ownerUser =
+      isOwner && profile
+        ? { id: profile.id, name: fullName(profile), photoUrl: profile.profilePhotoUrl }
+        : undefined;
+    void loadMembers(id, ownerUser);
+  }, [id, isOwner, profile, loadMembers]);
+
   const members: AssignableMember[] = useMemo(
-    () => (profile ? [{ id: profile.id, name: fullName(profile) }] : []),
-    [profile],
+    () => activeMembers.map((m) => ({ id: m.userId, name: m.displayName ?? 'Builder' })),
+    [activeMembers],
   );
   const memberName = (uid: string | null) =>
     members.find((m) => m.id === uid)?.name ?? null;
@@ -242,6 +258,32 @@ export default function Workspace() {
               description="No roadmap yet — generate a 30-day plan and turn it into milestones and tasks."
               actionLabel="Generate roadmap"
               onAction={() => router.push(`/projects/${id}/roadmap`)}
+            />
+          )}
+        </Card>
+      </View>
+
+      {/* Team */}
+      <View style={styles.section}>
+        <SectionHeader
+          title={`Team (${activeMembers.length})`}
+          actionLabel={isOwner ? 'Manage' : undefined}
+          onAction={isOwner ? () => router.push(`/projects/${id}/settings`) : undefined}
+        />
+        <Card padded>
+          {activeMembers.length ? (
+            <View style={{ gap: Spacing.three }}>
+              {activeMembers.map((m) => (
+                <MemberRow key={m.id} member={m} hideStatus isYou={m.userId === profile?.id} />
+              ))}
+            </View>
+          ) : (
+            <EmptyState
+              icon="people-outline"
+              title="No teammates yet"
+              description="No teammates yet — invite collaborators or accept join requests to start building together."
+              actionLabel={isOwner ? 'Manage members' : undefined}
+              onAction={isOwner ? () => router.push(`/projects/${id}/settings`) : undefined}
             />
           )}
         </Card>

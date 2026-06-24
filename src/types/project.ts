@@ -18,16 +18,20 @@ export interface Project {
   timeCommitment: string | null;
   lookingForMembers: boolean;
   launchStatus: 'draft' | 'launched';
+  /** Skills the project still needs. Persisted locally in demo mode. */
+  skillsNeeded?: string[];
   createdAt: string;
   updatedAt: string;
 }
+
+export type MembershipStatus = 'active' | 'pending' | 'invited' | 'declined' | 'removed' | 'left';
 
 export interface ProjectMember {
   id: string;
   projectId: string;
   userId: string;
   role: ProjectRole;
-  membershipStatus: 'active' | 'pending' | 'invited' | 'left';
+  membershipStatus: MembershipStatus;
   joinedAt: string;
   displayName?: string | null;
   profilePhotoUrl?: string | null;
