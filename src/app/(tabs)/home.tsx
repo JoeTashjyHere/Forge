@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AIRecommendationCard } from '@/components/forge/AIRecommendationCard';
 import { BuilderCard } from '@/components/forge/BuilderCard';
+import { LaunchCard } from '@/components/forge/LaunchCard';
 import { ProjectCard } from '@/components/forge/ProjectCard';
 import { SectionHeader } from '@/components/forge/SectionHeader';
 import { Avatar } from '@/components/ui/Avatar';
@@ -20,6 +21,7 @@ import { fullName } from '@/lib/profile';
 import { SAMPLE_BUILDERS, SAMPLE_PROJECTS } from '@/lib/sampleData';
 import { analyzeTeam } from '@/lib/teamBuilder';
 import { useAuthStore } from '@/store/authStore';
+import { useLaunchStore } from '@/store/launchStore';
 import { useMembershipStore } from '@/store/membershipStore';
 import { useMessagingStore } from '@/store/messagingStore';
 import { useProjectStore } from '@/store/projectStore';
@@ -43,12 +45,21 @@ export default function Home() {
   const unreadConversations = conversations.filter((c) => c.unreadCount > 0).slice(0, 3);
   const profileId = profile?.id;
 
+  const launchFeed = useLaunchStore((s) => s.feed);
+  const loadLaunchFeed = useLaunchStore((s) => s.loadFeed);
+  const launchFollowerCount = useLaunchStore((s) => s.followerCount);
+  const recentLaunches = launchFeed.slice(0, 3);
+
   const builders = SAMPLE_BUILDERS.slice(0, 2);
   const recommended = SAMPLE_PROJECTS.slice(0, 2);
 
   useEffect(() => {
     if (!projectsLoaded && profileId) void loadProjects(profileId);
   }, [projectsLoaded, profileId, loadProjects]);
+
+  useEffect(() => {
+    void loadLaunchFeed(profileId);
+  }, [loadLaunchFeed, profileId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -291,6 +302,26 @@ export default function Home() {
           Forge measures outcomes, not engagement.
         </Text>
       </View>
+
+      {recentLaunches.length ? (
+        <View style={styles.section}>
+          <SectionHeader
+            title="Recent launches"
+            actionLabel="See all"
+            onAction={() => router.push('/marketplace')}
+          />
+          <View style={styles.list}>
+            {recentLaunches.map((l) => (
+              <LaunchCard
+                key={l.id}
+                launch={l}
+                followerCount={launchFollowerCount(l.id)}
+                onPress={() => router.push(`/marketplace/${l.id}`)}
+              />
+            ))}
+          </View>
+        </View>
+      ) : null}
     </Screen>
   );
 }

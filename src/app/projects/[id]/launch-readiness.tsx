@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SectionHeader } from '@/components/forge/SectionHeader';
 import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
@@ -219,6 +220,15 @@ export default function LaunchReadinessScreen() {
           </View>
         </Card>
       </View>
+
+      {isOwner ? (
+        <View style={styles.section}>
+          <Button
+            title="Publish Launch"
+            onPress={() => router.push(`/projects/${id}/launch`)}
+          />
+        </View>
+      ) : null}
     </Screen>
   );
 }

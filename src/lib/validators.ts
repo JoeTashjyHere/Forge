@@ -88,6 +88,23 @@ export const roadmapSchema = z.object({
   next_action: z.string().default(''),
 });
 
+const optionalUrl = z
+  .string()
+  .trim()
+  .url('Enter a valid URL (include https://)')
+  .or(z.literal(''))
+  .optional();
+
+export const launchSchema = z.object({
+  launchTitle: z.string().trim().min(2, 'Add a launch title').max(120),
+  launchDescription: z.string().trim().min(10, 'Add a short description').max(2000),
+  websiteUrl: optionalUrl,
+  videoUrl: optionalUrl,
+  launchStory: z.string().trim().max(4000).optional(),
+  status: z.enum(['draft', 'published']),
+});
+export type LaunchFormInput = z.infer<typeof launchSchema>;
+
 export const projectSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters').max(80),
   description: z.string().min(10, 'Add a short description').max(2000),

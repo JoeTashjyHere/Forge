@@ -23,6 +23,7 @@ import { recommendTeammates } from '@/lib/recommend';
 import { SAMPLE_PROJECTS } from '@/lib/sampleData';
 import { analyzeTeam } from '@/lib/teamBuilder';
 import { useAuthStore } from '@/store/authStore';
+import { useLaunchStore } from '@/store/launchStore';
 import { useMembershipStore } from '@/store/membershipStore';
 import { useProjectStore } from '@/store/projectStore';
 import { useRoadmapStore } from '@/store/roadmapStore';
@@ -44,6 +45,9 @@ export default function ProjectDetail() {
   const loadRoadmaps = useRoadmapStore((s) => s.loadProject);
   const latestRoadmap = useRoadmapStore((s) => s.roadmapsByProject[id!]?.[0] ?? null);
 
+  const launch = useLaunchStore((s) => s.byProject[id!]);
+  const loadProjectLaunch = useLaunchStore((s) => s.loadProjectLaunch);
+
   const members = useMembershipStore((s) => s.membersByProject[id!] ?? []);
   const loadMembers = useMembershipStore((s) => s.loadMembers);
   const requestToJoin = useMembershipStore((s) => s.requestToJoin);
@@ -62,8 +66,9 @@ export default function ProjectDetail() {
     if (isOwner && id) {
       void loadProject(id);
       void loadRoadmaps(id);
+      void loadProjectLaunch(id);
     }
-  }, [isOwner, id, loadProject, loadRoadmaps]);
+  }, [isOwner, id, loadProject, loadRoadmaps, loadProjectLaunch]);
 
   useEffect(() => {
     if (!id) return;
@@ -237,6 +242,45 @@ export default function ProjectDetail() {
         </Pressable>
       ) : null}
 
+      {/* Launch status */}
+      {isOwner ? (
+        <Pressable
+          onPress={() =>
+            launch?.status === 'published'
+              ? router.push(`/marketplace/${launch.id}`)
+              : router.push(`/projects/${id}/launch`)
+          }
+          style={styles.block}
+        >
+          <Card padded>
+            <View style={styles.readinessRow}>
+              <Ionicons
+                name={launch?.status === 'published' ? 'rocket' : 'rocket-outline'}
+                size={20}
+                color={launch?.status === 'published' ? theme.success : theme.textMuted}
+              />
+              <View style={{ flex: 1 }}>
+                <Text variant="label" weight="semibold">
+                  {launch?.status === 'published'
+                    ? 'Published'
+                    : launch?.status === 'draft'
+                      ? 'Draft launch'
+                      : 'Not launched'}
+                </Text>
+                <Text variant="caption" tone="secondary">
+                  {launch?.status === 'published'
+                    ? 'View your public launch page.'
+                    : launch?.status === 'draft'
+                      ? 'Finish and publish your launch.'
+                      : 'Publish a launch page to showcase what you built.'}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={theme.textMuted} />
+            </View>
+          </Card>
+        </Pressable>
+      ) : null}
+
       {/* Team */}
       {activeMembers.length ? (
         <View style={styles.block}>
@@ -289,6 +333,11 @@ export default function ProjectDetail() {
               title="Launch Readiness"
               variant="secondary"
               onPress={() => router.push(`/projects/${id}/launch-readiness`)}
+            />
+            <Button
+              title={launch ? 'Edit launch' : 'Publish Launch'}
+              variant="secondary"
+              onPress={() => router.push(`/projects/${id}/launch`)}
             />
             <Button
               title="Create AI Roadmap"
