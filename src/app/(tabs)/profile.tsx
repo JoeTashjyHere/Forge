@@ -15,6 +15,7 @@ import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { isAdminUser } from '@/lib/admin';
 import { NEW_USER_STATUS } from '@/lib/constants';
 import { fullName } from '@/lib/profile';
 import { getProfileDetails } from '@/lib/profileDetails';
@@ -136,8 +137,12 @@ export default function ProfileTab() {
           <ModeBanner />
         </View>
         <Card padded>
+          <LinkRow label="Share feedback" onPress={() => router.push('/feedback')} />
           <LinkRow label="Privacy Policy" onPress={() => router.push('/legal/privacy')} />
           <LinkRow label="Terms of Service" onPress={() => router.push('/legal/terms')} />
+          {isAdminUser(profile) ? (
+            <LinkRow label="Beta admin" onPress={() => router.push('/beta/admin')} />
+          ) : null}
         </Card>
       </View>
 

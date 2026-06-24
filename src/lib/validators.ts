@@ -105,6 +105,36 @@ export const launchSchema = z.object({
 });
 export type LaunchFormInput = z.infer<typeof launchSchema>;
 
+/** What best describes a beta applicant. Mirrors builder archetypes + Other. */
+export const BUILDER_TYPES = [
+  'Builder',
+  'Operator',
+  'Marketer',
+  'Designer',
+  'Seller',
+  'Visionary',
+  'Analyst',
+  'Other',
+] as const;
+
+export const betaInviteSchema = z.object({
+  name: z.string().trim().min(2, 'Add your name').max(80),
+  email: z.string().trim().email('Enter a valid email'),
+  role: z.string().trim().min(2, 'Tell us your role or background').max(160),
+  builderType: z.enum(BUILDER_TYPES, { message: 'Pick what best describes you' }),
+  building: z.string().trim().min(5, 'Tell us what you want to build').max(1000),
+});
+export type BetaInviteFormInput = z.infer<typeof betaInviteSchema>;
+
+export const betaFeedbackSchema = z.object({
+  whatWorked: z.string().trim().max(2000).optional(),
+  whatConfused: z.string().trim().max(2000).optional(),
+  whatExpected: z.string().trim().max(2000).optional(),
+  wouldUseAgain: z.boolean({ message: 'Let us know' }),
+  rating: z.number().int().min(1, 'Add a rating from 1 to 5').max(5),
+});
+export type BetaFeedbackFormInput = z.infer<typeof betaFeedbackSchema>;
+
 export const projectSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters').max(80),
   description: z.string().min(10, 'Add a short description').max(2000),

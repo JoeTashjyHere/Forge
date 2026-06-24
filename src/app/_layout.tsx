@@ -45,9 +45,12 @@ export default function RootLayout() {
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="index" />
               <Stack.Screen name="landing" />
+              <Stack.Screen name="beta/index" />
+              <Stack.Screen name="beta/admin" />
               <Stack.Screen name="auth" />
               <Stack.Screen name="onboarding" />
               <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="feedback" options={{ presentation: 'modal' }} />
               <Stack.Screen name="legal/privacy" options={{ presentation: 'modal' }} />
               <Stack.Screen name="legal/terms" options={{ presentation: 'modal' }} />
               <Stack.Screen name="projects/create" options={{ presentation: 'modal' }} />

@@ -88,10 +88,16 @@ export default function Landing() {
 
       <View style={styles.actions}>
         <Button title="Start Building" size="lg" onPress={() => router.push('/auth/signup')} />
+        <Button
+          title="Join the Beta"
+          variant="secondary"
+          size="lg"
+          onPress={() => router.push('/beta')}
+        />
         {!isSupabaseConfigured ? (
           <Button
             title="Explore the demo"
-            variant="secondary"
+            variant="ghost"
             size="lg"
             loading={exploring}
             onPress={exploreDemo}
