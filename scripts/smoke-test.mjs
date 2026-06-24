@@ -187,28 +187,12 @@ async function run() {
   });
 
   await step('direct messaging (A <-> B)', async () => {
-    const conv = await state.A.from('conversations')
-      .insert({ conversation_type: 'direct' })
-      .select('id')
-      .single();
+    // Conversation + both memberships are created atomically via the
+    // create_direct_conversation() function (mirrors the app flow).
+    const conv = await state.A.rpc('create_direct_conversation', { other_user_id: state.bId });
     must(conv.error, 'create conversation');
-    state.convId = conv.data.id;
-    must(
-      (
-        await state.A.from('conversation_members').insert([
-          { conversation_id: state.convId, user_id: state.aId },
-        ])
-      ).error,
-      'add self to conversation',
-    );
-    must(
-      (
-        await state.A.from('conversation_members').insert([
-          { conversation_id: state.convId, user_id: state.bId },
-        ])
-      ).error,
-      'add B to conversation',
-    );
+    state.convId = conv.data;
+    if (!state.convId) throw new Error('no conversation id returned');
     must(
       (
         await state.A.from('messages').insert({

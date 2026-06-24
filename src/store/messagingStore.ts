@@ -228,35 +228,16 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
     set({ meId: userId });
 
     if (isSupabaseConfigured) {
-      // Find an existing direct conversation that includes both users.
-      const { data: mine } = await supabase
-        .from('conversation_members')
-        .select('conversation_id')
-        .eq('user_id', userId);
-      const myConvIds = (mine ?? []).map((m: any) => m.conversation_id);
-      if (myConvIds.length) {
-        const { data: shared } = await supabase
-          .from('conversation_members')
-          .select('conversation_id')
-          .eq('user_id', other.id)
-          .in('conversation_id', myConvIds);
-        const existing = shared?.[0]?.conversation_id;
-        if (existing) {
-          await get().loadConversations(userId);
-          return existing;
-        }
-      }
-      const { data: conv, error } = await supabase
-        .from('conversations')
-        .insert({ conversation_type: 'direct' })
-        .select('id')
-        .single();
-      if (error || !conv) throw error ?? new Error('Could not create conversation');
-      // Insert self first (RLS), then the other member.
-      await supabase.from('conversation_members').insert({ conversation_id: conv.id, user_id: userId });
-      await supabase.from('conversation_members').insert({ conversation_id: conv.id, user_id: other.id });
+      // Create (or reuse) the conversation and both memberships atomically.
+      // A SECURITY DEFINER function avoids the RLS chicken-and-egg where the
+      // conversation can't be read back via RETURNING until a membership row
+      // exists. See supabase/migrations/0004_fix_conversation_rls.sql.
+      const { data, error } = await supabase.rpc('create_direct_conversation', {
+        other_user_id: other.id,
+      });
+      if (error || !data) throw error ?? new Error('Could not create conversation');
       await get().loadConversations(userId);
-      return conv.id as string;
+      return data as string;
     }
 
     // Demo mode — reuse an existing conversation with the same person.
