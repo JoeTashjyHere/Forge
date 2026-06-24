@@ -18,6 +18,8 @@ import { useTheme } from '@/hooks/use-theme';
 import { Button } from '@/components/ui/Button';
 import { formatRelativeTime } from '@/lib/dates';
 import { calculateProjectHealth, milestoneProgress } from '@/lib/health';
+import { trackEvent } from '@/lib/analytics';
+import { canViewWorkspace } from '@/lib/permissions';
 import { fullName } from '@/lib/profile';
 import { importRoadmapToWorkspace } from '@/lib/roadmap';
 import { MemberRow } from '@/components/forge/MemberRow';
@@ -73,6 +75,7 @@ export default function Workspace() {
 
   const loadMembers = useMembershipStore((s) => s.loadMembers);
   const projectMembers = useMembershipStore((s) => s.membersByProject[id!] ?? []);
+  const membersLoaded = useMembershipStore((s) => !!s.loadedProjects[id!]);
   const activeMembers = projectMembers.filter((m) => m.membershipStatus === 'active');
   const isOwner = project?.ownerId === profile?.id;
 
@@ -157,10 +160,36 @@ export default function Workspace() {
     try {
       await importRoadmapToWorkspace(id!, latestRoadmap.roadmap);
       await markImported(latestRoadmap.id);
+      void trackEvent('roadmap_added_to_workspace', profile?.id ?? null, { projectId: id });
     } finally {
       setImportingRoadmap(false);
     }
   };
+
+  const accessDenied =
+    !!project && !!profile && membersLoaded && !canViewWorkspace(project, profile.id, projectMembers);
+
+  if (accessDenied) {
+    return (
+      <Screen edges={['top']}>
+        <View style={styles.headerBar}>
+          <Pressable onPress={() => router.back()} hitSlop={12}>
+            <Ionicons name="chevron-back" size={26} color={theme.text} />
+          </Pressable>
+          <Text variant="label" tone="secondary" numberOfLines={1} style={{ flex: 1 }}>
+            {project?.title ?? 'Workspace'}
+          </Text>
+        </View>
+        <EmptyState
+          icon="lock-closed-outline"
+          title="This workspace is private"
+          description="Only members of this project can view its workspace. Request to join from the project page to get access."
+          actionLabel="View project"
+          onAction={() => router.replace(`/projects/${id}`)}
+        />
+      </Screen>
+    );
+  }
 
   return (
     <Screen edges={['top']}>

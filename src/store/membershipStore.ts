@@ -1,8 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
+import { trackEvent } from '@/lib/analytics';
 import type { ProjectRole } from '@/lib/constants';
 import { SAMPLE_BUILDERS } from '@/lib/sampleData';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
+import { getCurrentUserId } from '@/store/authStore';
 import type { MembershipStatus, ProjectMember } from '@/types/project';
 
 const MEMBERS_KEY = 'forge.members';
@@ -190,6 +192,7 @@ export const useMembershipStore = create<MembershipState>((set, get) => ({
       (m) => m.userId === builder.id && m.membershipStatus !== 'removed' && m.membershipStatus !== 'declined',
     );
     if (existing) return;
+    void trackEvent('teammate_invited', getCurrentUserId(), { projectId, builderId: builder.id });
 
     if (isSupabaseConfigured) {
       const { error } = await supabase.from('project_members').insert({

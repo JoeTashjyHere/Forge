@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
+import { trackEvent } from '@/lib/analytics';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import { isValidMessageBody } from '@/lib/validators';
 import type {
@@ -279,6 +280,7 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
   sendDirectMessage: async (conversationId, senderId, recipientId, body) => {
     const trimmed = body.trim();
     if (!isValidMessageBody(trimmed)) return;
+    void trackEvent('message_sent', senderId, { kind: 'direct', conversationId });
 
     if (isSupabaseConfigured) {
       const { data, error } = await supabase
@@ -395,6 +397,7 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
   sendWorkspaceMessage: async (projectId, sender, body) => {
     const trimmed = body.trim();
     if (!isValidMessageBody(trimmed)) return;
+    void trackEvent('message_sent', sender.id, { kind: 'workspace', projectId });
 
     if (isSupabaseConfigured) {
       const { data, error } = await supabase

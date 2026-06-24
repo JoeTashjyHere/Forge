@@ -1,6 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Session } from '@supabase/supabase-js';
 import { create } from 'zustand';
+import { trackEvent } from '@/lib/analytics';
+import { seedDemoData } from '@/lib/demoSeed';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import { mapProfileRow } from '@/lib/profile';
 import { saveDemoDetails } from '@/lib/profileDetails';
@@ -73,6 +75,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (!isSupabaseConfigured) {
       const demoSession = await AsyncStorage.getItem(DEMO_SESSION_KEY);
       const profile = demoSession ? await loadDemoProfile() : null;
+      if (profile?.onboardingCompleted) await seedDemoData(profile);
       set({
         initialized: true,
         demoUserId: demoSession,
@@ -106,10 +109,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         const profile = emptyProfile(id, email);
         await saveDemoProfile(profile);
         set({ demoUserId: id, profile });
+        void trackEvent('signup', id);
         return;
       }
-      const { error } = await supabase.auth.signUp({ email, password });
+      const { data, error } = await supabase.auth.signUp({ email, password });
       if (error) throw error;
+      void trackEvent('signup', data.user?.id ?? null);
     } catch (e: any) {
       set({ error: e.message ?? 'Sign up failed' });
       throw e;
@@ -211,7 +216,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       };
       await saveDemoProfile(updated);
       await saveDemoDetails(data);
+      await seedDemoData(updated);
       set({ profile: updated });
+      void trackEvent('onboarding_completed', updated.id);
       return;
     }
 
@@ -257,6 +264,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     });
 
     await get().refreshProfile();
+    void trackEvent('onboarding_completed', userId);
   },
 
   updateProfile: async (patch) => {
@@ -291,4 +299,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 /** True when the user has an active session (real or demo). */
 export function selectIsAuthenticated(s: AuthState) {
   return Boolean(s.session || s.demoUserId);
+}
+
+/** Best-effort current user id for analytics from non-React contexts. */
+export function getCurrentUserId(): string | null {
+  const s = useAuthStore.getState();
+  return s.profile?.id ?? s.demoUserId ?? s.session?.user.id ?? null;
 }

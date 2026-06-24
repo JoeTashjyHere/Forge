@@ -22,7 +22,7 @@ export default function TabsLayout() {
     if (profileId) void loadConversations(profileId);
   }, [profileId, loadConversations]);
 
-  if (initialized && !isAuthed) return <Redirect href="/auth/login" />;
+  if (initialized && !isAuthed) return <Redirect href="/landing" />;
   if (initialized && !onboarded) return <Redirect href="/onboarding" />;
 
   return (

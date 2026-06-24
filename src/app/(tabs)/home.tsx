@@ -303,13 +303,13 @@ export default function Home() {
         </Text>
       </View>
 
-      {recentLaunches.length ? (
-        <View style={styles.section}>
-          <SectionHeader
-            title="Recent launches"
-            actionLabel="See all"
-            onAction={() => router.push('/marketplace')}
-          />
+      <View style={styles.section}>
+        <SectionHeader
+          title="Recent launches"
+          actionLabel="Explore"
+          onAction={() => router.push('/marketplace')}
+        />
+        {recentLaunches.length ? (
           <View style={styles.list}>
             {recentLaunches.map((l) => (
               <LaunchCard
@@ -320,8 +320,16 @@ export default function Home() {
               />
             ))}
           </View>
-        </View>
-      ) : null}
+        ) : (
+          <EmptyState
+            icon="rocket-outline"
+            title="Discover what builders ship"
+            description="Browse launches from the Forge community and follow the ones you love."
+            actionLabel="Open marketplace"
+            onAction={() => router.push('/marketplace')}
+          />
+        )}
+      </View>
     </Screen>
   );
 }

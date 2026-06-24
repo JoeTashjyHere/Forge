@@ -1,6 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
+import { trackEvent } from '@/lib/analytics';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
+import { getCurrentUserId } from '@/store/authStore';
 import type {
   Milestone,
   MilestoneInput,
@@ -171,6 +173,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
   updateMilestone: async (projectId, id, patch) => {
     const current = get().milestonesByProject[projectId] ?? [];
+    const prev = current.find((m) => m.id === id);
+    if (patch.status === 'completed' && prev && prev.status !== 'completed') {
+      void trackEvent('milestone_completed', getCurrentUserId(), { projectId, milestoneId: id });
+    }
     const next = current.map((m) =>
       m.id === id
         ? {

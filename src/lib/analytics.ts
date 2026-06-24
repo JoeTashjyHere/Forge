@@ -6,13 +6,14 @@ import { isSupabaseConfigured, supabase } from '@/lib/supabase';
  */
 export type AnalyticsEvent =
   | 'signup'
-  | 'onboarding_complete'
+  | 'onboarding_completed'
   | 'project_created'
-  | 'project_joined'
-  | 'match_viewed'
-  | 'message_sent'
   | 'roadmap_generated'
+  | 'roadmap_added_to_workspace'
+  | 'teammate_invited'
+  | 'message_sent'
   | 'milestone_completed'
+  | 'launch_readiness_viewed'
   | 'launch_published';
 
 export async function trackEvent(

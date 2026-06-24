@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
+import { trackEvent } from '@/lib/analytics';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import type { ProjectInput } from '@/lib/validators';
 import type { Project } from '@/types/project';
@@ -116,6 +117,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
           );
         }
         set((s) => ({ projects: [created, ...s.projects] }));
+        void trackEvent('project_created', ownerId, { projectId: created.id });
         return created;
       }
     }
@@ -123,6 +125,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const next = [project, ...get().projects];
     set({ projects: next });
     await saveLocal(next);
+    void trackEvent('project_created', ownerId, { projectId: project.id });
     return project;
   },
 

@@ -1,7 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
+import { trackEvent } from '@/lib/analytics';
 import { SAMPLE_LAUNCHES, SAMPLE_PROJECTS } from '@/lib/sampleData';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
+import { getCurrentUserId } from '@/store/authStore';
 import { useMembershipStore } from '@/store/membershipStore';
 import { useProjectStore } from '@/store/projectStore';
 import type { Launch, LaunchFormValues, LaunchListItem } from '@/types/launch';
@@ -157,6 +159,7 @@ export const useLaunchStore = create<LaunchState>((set, get) => ({
   saveLaunch: async (projectId, values) => {
     const existing = get().byProject[projectId];
     const now = new Date().toISOString();
+    const newlyPublished = values.status === 'published' && existing?.status !== 'published';
     const launchDate =
       values.status === 'published'
         ? existing?.launchDate ?? now.slice(0, 10)
@@ -180,6 +183,9 @@ export const useLaunchStore = create<LaunchState>((set, get) => ({
       if (error || !data) throw error ?? new Error('Failed to save launch');
       const launch = mapLaunchRow(data);
       set((s) => ({ byProject: { ...s.byProject, [projectId]: launch } }));
+      if (newlyPublished) {
+        void trackEvent('launch_published', getCurrentUserId(), { projectId, launchId: launch.id });
+      }
       if (get().loadedFeed) await get().loadFeed();
       return launch;
     }
@@ -201,6 +207,9 @@ export const useLaunchStore = create<LaunchState>((set, get) => ({
     map[projectId] = launch;
     await saveLaunchMap(map);
     set((s) => ({ byProject: { ...s.byProject, [projectId]: launch } }));
+    if (newlyPublished) {
+      void trackEvent('launch_published', getCurrentUserId(), { projectId, launchId: launch.id });
+    }
     if (get().loadedFeed) await get().loadFeed();
     return launch;
   },

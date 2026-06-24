@@ -6,7 +6,7 @@ export default function OnboardingLayout() {
   const isAuthed = useAuthStore(selectIsAuthenticated);
   const onboarded = useAuthStore((s) => s.profile?.onboardingCompleted ?? false);
 
-  if (initialized && !isAuthed) return <Redirect href="/auth/login" />;
+  if (initialized && !isAuthed) return <Redirect href="/landing" />;
   if (initialized && onboarded) return <Redirect href="/(tabs)/home" />;
 
   return <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }} />;

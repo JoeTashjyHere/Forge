@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
+import { trackEvent } from '@/lib/analytics';
 import {
   buildDemoRoadmap,
   generateRoadmapRemote,
@@ -84,6 +85,7 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
 
   generateAndSave: async (input) => {
     const { projectId } = input;
+    void trackEvent('roadmap_generated', input.generatedBy ?? null, { projectId });
 
     if (isSupabaseConfigured) {
       try {

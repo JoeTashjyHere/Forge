@@ -11,6 +11,7 @@ import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { trackEvent } from '@/lib/analytics';
 import { importRoadmapToWorkspace } from '@/lib/roadmap';
 import { getProfileDetails } from '@/lib/profileDetails';
 import { useAuthStore } from '@/store/authStore';
@@ -80,6 +81,7 @@ export default function RoadmapScreen() {
     try {
       await importRoadmapToWorkspace(id, latest.roadmap);
       await markImported(latest.id);
+      void trackEvent('roadmap_added_to_workspace', profile?.id ?? null, { projectId: id });
       setImportedNow(true);
     } finally {
       setImporting(false);

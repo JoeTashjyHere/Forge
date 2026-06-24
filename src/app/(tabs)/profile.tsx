@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BuildStageBadge } from '@/components/forge/BuildStageBadge';
 import { SectionHeader } from '@/components/forge/SectionHeader';
@@ -129,17 +129,37 @@ export default function ProfileTab() {
         )}
       </View>
 
+      <View style={styles.section}>
+        <SectionHeader title="About" />
+        <Card padded>
+          <LinkRow label="Privacy Policy" onPress={() => router.push('/legal/privacy')} />
+          <LinkRow label="Terms of Service" onPress={() => router.push('/legal/terms')} />
+        </Card>
+      </View>
+
       <View style={[styles.section, { marginBottom: Spacing.seven }]}>
         <Button
           title="Sign out"
           variant="ghost"
           onPress={async () => {
             await signOut();
-            router.replace('/auth/login');
+            router.replace('/landing');
           }}
         />
       </View>
     </Screen>
+  );
+}
+
+function LinkRow({ label, onPress }: { label: string; onPress: () => void }) {
+  const theme = useTheme();
+  return (
+    <Pressable style={styles.linkRow} onPress={onPress}>
+      <Text variant="caption" tone="tint" weight="semibold" style={{ flex: 1 }}>
+        {label}
+      </Text>
+      <Ionicons name="chevron-forward" size={16} color={theme.textMuted} />
+    </Pressable>
   );
 }
 
@@ -188,5 +208,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.three,
     paddingVertical: Spacing.two,
+  },
+  linkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    paddingVertical: Spacing.three,
   },
 });

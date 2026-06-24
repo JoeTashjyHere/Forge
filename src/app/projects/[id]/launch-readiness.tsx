@@ -11,6 +11,7 @@ import { Text } from '@/components/ui/Text';
 import { Spacing } from '@/constants/theme';
 import type { BuilderArchetype } from '@/lib/constants';
 import { useTheme } from '@/hooks/use-theme';
+import { trackEvent } from '@/lib/analytics';
 import { analyzeLaunchReadiness } from '@/lib/launchReadiness';
 import { fullName } from '@/lib/profile';
 import { analyzeTeam } from '@/lib/teamBuilder';
@@ -48,6 +49,10 @@ export default function LaunchReadinessScreen() {
   const latestRoadmap = useRoadmapStore((s) => s.roadmapsByProject[id!]?.[0] ?? null);
 
   const isOwner = project?.ownerId === profile?.id;
+
+  useEffect(() => {
+    if (id) void trackEvent('launch_readiness_viewed', profile?.id ?? null, { projectId: id });
+  }, [id, profile?.id]);
 
   useEffect(() => {
     if (!projectsLoaded && profile?.id) void loadProjects(profile.id);
